@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Hebrew ("iw") localisation. The reference UI for this app shows the panel heading in Hebrew,
+  so the strings come from resources rather than being hard-coded — the same panel reads
+  "Color Breakdown" on an English device and "חלוקת צבעים" here.
+
+  Note: layout stays end-aligned in both directions, so on an RTL locale the panel moves to the
+  left edge of the preview.
+-->
+<resources>
+    <string name="app_name">חלוקת צבעים</string>
+
+    <string name="permission_title">נדרשת הרשאה למצלמה</string>
+    <string name="permission_rationale">האפליקציה מנתחת את תמונת המצלמה בזמן אמת כדי להציג את חמשת הצבעים הנפוצים בפריים. שום דבר לא יוצא מהמכשיר — הפריימים לא נשמרים ולא נשלחים לשום מקום.</string>
+    <string name="permission_grant">אישור גישה למצלמה</string>
+
+    <string name="color_breakdown_title">חלוקת צבעים</string>
+    <string name="color_card_percentage">%1$.2f%%</string>
+    <string name="color_card_rgb">R:%1$d G:%2$d B:%3$d</string>
+    <string name="color_panel_empty">כוונו את המצלמה למשהו…</string>
+    <string name="color_panel_waiting">מנתח פריים…</string>
+
+    <string name="error_camera_unavailable">לא ניתן להפעיל את המצלמה במכשיר זה.</string>
+    <string name="error_analysis_failed">לא ניתן היה לנתח פריים; ממשיכים לנסות.</string>
+    <string name="error_dismiss">סגירה</string>
+</resources>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Color Breakdown</string>
+
+    <!-- Camera permission gate -->
+    <string name="permission_title">Camera access needed</string>
+    <string name="permission_rationale">Color Breakdown analyses the live camera image to show you the five most common colours in the frame. Nothing leaves your device — frames are never stored or uploaded.</string>
+    <string name="permission_grant">Grant camera access</string>
+
+    <!-- Colour panel -->
+    <string name="color_breakdown_title">Color Breakdown</string>
+    <!-- Two decimals, as in the reference UI: 8.24% -->
+    <string name="color_card_percentage">%1$.2f%%</string>
+    <!-- R:116 G:114 B:94 -->
+    <string name="color_card_rgb">R:%1$d G:%2$d B:%3$d</string>
+    <string name="color_panel_empty">Point the camera at something…</string>
+    <string name="color_panel_waiting">Analyzing frame…</string>
+
+    <!-- Errors -->
+    <string name="error_camera_unavailable">The camera could not be started on this device.</string>
+    <string name="error_analysis_failed">A frame could not be analysed; still trying.</string>
+    <string name="error_dismiss">Dismiss</string>
+</resources>

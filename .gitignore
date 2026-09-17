@@ -1,0 +1,31 @@
+# Gradle
+.gradle/
+build/
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Local machine config — contains an absolute SDK path, never share it
+local.properties
+
+# Signing material
+*.jks
+*.keystore
+
+# Build outputs
+*.apk
+*.aab
+*.ap_
+*.dex
+output.json
+
+# Logs and profiling dumps
+*.log
+*.hprof
+
+# macOS
+.DS_Store
