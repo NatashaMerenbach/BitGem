@@ -49,7 +49,7 @@ class ColorBreakdownPanelTest {
     fun showsTheHeadingPercentagesAndRgbValues() {
         composeRule.setContent {
             ColorCamTheme {
-                ColorBreakdownPanel(colors = colors, isWaitingForFrames = false)
+                ColorBreakdownPanel(colorResults = colors, isWaitingForFrames = false)
             }
         }
 
@@ -66,7 +66,7 @@ class ColorBreakdownPanelTest {
     fun showsTheWaitingStateBeforeTheFirstFrame() {
         composeRule.setContent {
             ColorCamTheme {
-                ColorBreakdownPanel(colors = emptyList(), isWaitingForFrames = true)
+                ColorBreakdownPanel(colorResults = emptyList(), isWaitingForFrames = true)
             }
         }
 
@@ -78,7 +78,7 @@ class ColorBreakdownPanelTest {
         composeRule.setContent {
             ColorCamTheme {
                 ColorBreakdownPanel(
-                    colors = listOf(ColorResult(RgbColor(10, 10, 10), 100f)),
+                    colorResults = listOf(ColorResult(RgbColor(10, 10, 10), 100f)),
                     isWaitingForFrames = false,
                 )
             }

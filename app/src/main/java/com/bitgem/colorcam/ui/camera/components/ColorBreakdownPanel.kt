@@ -45,7 +45,7 @@ import com.bitgem.colorcam.ui.theme.PanelTextColor
  */
 @Composable
 fun ColorBreakdownPanel(
-    colors: List<ColorResult>,
+    colorResults: List<ColorResult>,
     isWaitingForFrames: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -63,7 +63,7 @@ fun ColorBreakdownPanel(
             color = PanelTextColor,
         )
 
-        if (colors.isEmpty()) {
+        if (colorResults.isEmpty()) {
             if (isWaitingForFrames) {
                 Text(
                     text = stringResource(R.string.color_panel_waiting),
@@ -81,9 +81,9 @@ fun ColorBreakdownPanel(
             return@Column
         }
 
-        colors.forEach { color ->
+        colorResults.forEach { colorResult ->
             ColorBreakdownRow(
-                colorResult = color,
+                colorResult = colorResult,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
@@ -140,7 +140,7 @@ private fun ColorBreakdownPanelPreview() {
     ColorCamTheme {
         Box(modifier = Modifier.fillMaxSize()) {
             ColorBreakdownPanel(
-                colors = listOf(
+                colorResults = listOf(
                     ColorResult(RgbColor(116, 114, 94), 8.24f),
                     ColorResult(RgbColor(101, 99, 77), 7.11f),
                     ColorResult(RgbColor(119, 120, 116), 3.12f),

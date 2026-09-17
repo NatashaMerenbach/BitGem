@@ -1,5 +1,6 @@
 package com.bitgem.colorcam.ui.camera
 
+import android.annotation.SuppressLint
 import androidx.camera.core.ImageAnalysis
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -34,6 +35,7 @@ import java.util.concurrent.Executor
  * The panel's width is derived from the available width instead of being a constant, so the
  * proportion holds on a tablet or in landscape.
  */
+@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun CameraScreen(
     state: ColorAnalysisUiState,
@@ -61,7 +63,7 @@ fun CameraScreen(
                 )
 
                 ColorBreakdownPanel(
-                    colors = state.topColors,
+                    colorResults = state.topColors,
                     isWaitingForFrames = state.isWaitingForFrames,
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
