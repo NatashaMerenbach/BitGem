@@ -20,7 +20,7 @@ import javax.inject.Singleton
 @Singleton
 class ImageToYuv420Frame @Inject constructor() {
 
-    fun map(image: ImageProxy): Yuv420Frame {
+    fun convertToYUV420Frame(image: ImageProxy): Yuv420Frame {
         require(image.format == ImageProxyFormat.YUV_420_888) {
             "ImageProxyFrameMapper only understands YUV_420_888 but got format ${image.format}"
         }

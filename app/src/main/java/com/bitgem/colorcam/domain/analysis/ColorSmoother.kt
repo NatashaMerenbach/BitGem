@@ -35,24 +35,24 @@ class ColorSmoother(
 
     private var previous: List<ColorResult> = emptyList()
 
-    fun smooth(current: List<ColorResult>): List<ColorResult> {
-        if (current.isEmpty()) {
+    fun smooth(colorResults: List<ColorResult>): List<ColorResult> {
+        if (colorResults.isEmpty()) {
             previous = emptyList()
             return emptyList()
         }
         if (alpha >= 1f) {
-            previous = normalize(current)
+            previous = normalize(colorResults)
             return previous
         }
 
-        val smoothed = current.map { now ->
-            val before = closestPrevious(now.rgb)
-            if (before == null) {
-                now
+        val smoothed = colorResults.map { colorResult ->
+            val closestPrevious = closestPrevious(colorResult.rgb)
+            if (closestPrevious == null) {
+                colorResult
             } else {
                 ColorResult(
-                    rgb = ColorMath.lerp(before.rgb, now.rgb, alpha),
-                    percentage = before.percentage + alpha * (now.percentage - before.percentage),
+                    rgb = ColorMath.linearInterpolation(closestPrevious.rgb, colorResult.rgb, alpha),
+                    percentage = closestPrevious.percentage + alpha * (colorResult.percentage - closestPrevious.percentage),
                 )
             }
         }
@@ -75,7 +75,9 @@ class ColorSmoother(
                 best = candidate
             }
         }
-        return best?.takeIf { bestDistance <= matchDistance }
+
+        if (bestDistance > matchDistance) return null
+        return best
     }
 
     /** Rescales to exactly 100% and re-sorts, so the panel always sums up. */

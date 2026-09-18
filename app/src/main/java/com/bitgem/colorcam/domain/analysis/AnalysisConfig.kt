@@ -6,29 +6,29 @@ package com.bitgem.colorcam.domain.analysis
  */
 data class AnalysisConfig(
     /**
-     * Colour resolution of the histogram: `2^bitsPerChannel` levels per channel, i.e.
+     * Color resolution of the histogram: `2^bitsPerChannel` levels per channel, i.e.
      * `2^(3*bits)` bins. 5 bits → 32 levels → 32,768 bins → ~1.2 MB of reusable scratch
-     * space. Higher values separate near-identical colours better but cost memory and make
+     * space. Higher values separate near-identical colors better but cost memory and make
      * the histogram sparse; 5 bits is the sweet spot found by experiment (see PROCESS.md).
      */
     val bitsPerChannel: Int = 5,
 
     /**
-     * Every `samplingStep`-th pixel in x *and* y is analysed, so the sample count is
+     * Every `samplingStep`-th pixel in x *and* y is analyzed, so the sample count is
      * `1 / samplingStep²` of the frame. 4 → 1/16 of the pixels. Rationale in PROCESS.md;
      * briefly: a 640x480 analysis stream is 307k pixels, the clustering cost is dominated
      * by the number of *bins*, and 16x fewer pixels is 16x less binning work with a
      * percentage error that is far below the perceptible threshold.
      */
-    val samplingStep: Int = 4,
+    val samplingStep: Int = 1,
 
     /**
-     * k of k-means. Deliberately larger than the number of displayed colours: the merge
+     * k of k-means. Deliberately larger than the number of displayed colors: the merge
      * step can collapse two clusters into one, so a little headroom prevents the panel
      * from dropping to 3-4 cards while still costing almost nothing (k-means work grows
      * with the number of *bins*, not with k).
      */
-    val clusterCount: Int = 8,
+    val clusterCount: Int = 6,
 
     /** Upper bound on Lloyd iterations; the loop normally converges in 4-6. */
     val maxIterations: Int = 12,
@@ -38,18 +38,18 @@ data class AnalysisConfig(
 
     /**
      * Two clusters closer than this (Euclidean RGB distance) are merged into one.
-     * ~24 units is roughly the point below which two swatches look like "the same colour"
+     * ~24 units is roughly the point below which two swatches look like "the same color"
      * side by side on a phone screen.
      */
     val mergeDistance: Double = 24.0,
 
-    /** How many colours the panel shows. */
+    /** How many colors the panel shows. */
     val topColorCount: Int = 5,
 
     /** EMA factor for temporal smoothing: `new = old + alpha * (current - old)`. */
     val temporalAlpha: Float = 0.35f,
 
-    /** A colour only inherits the previous frame's smoothing if it is this close to it. */
+    /** A color only inherits the previous frame's smoothing if it is this close to it. */
     val temporalMatchDistance: Double = 32.0,
 
     /**

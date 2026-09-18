@@ -150,7 +150,7 @@ class Yuv420ConverterTest {
         val frame = YuvTestFrames.flat(4, 2, YuvTestFrames.WHITE_Y, 128, 128)
         val scratch = IntArray(16)
 
-        val converted = converter.convertInto(frame, scratch)
+        val converted = converter.convertIntoFrameData(frame, scratch)
 
         assertEquals(4, converted.width)
         assertEquals(2, converted.height)

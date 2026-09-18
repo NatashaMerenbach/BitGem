@@ -12,16 +12,10 @@ import org.junit.Test
  * composition is known exactly (the "known-colour test images" of the write-up), so the
  * percentages can be asserted numerically rather than eyeballed.
  */
-class KMeansColorQuantizerTest {
+class ColorQuantizerTest {
 
-    private val config = AnalysisConfig(
-        samplingStep = 2, // 1/4 of the pixels, keeps the fixtures small
-        bitsPerChannel = 5,
-        clusterCount = 8,
-        mergeDistance = 24.0,
-        topColorCount = 5,
-    )
-    private val quantizer = KMeansColorQuantizer(config)
+
+    private val quantizer = ColorQuantizer()
 
     private val red = RgbColor(220, 30, 20)
     private val green = RgbColor(30, 200, 60)
@@ -68,7 +62,7 @@ class KMeansColorQuantizerTest {
             bands = listOf(24 to red, 12 to green, 4 to blue),
         )
 
-        val results = quantizer.quantize(frame, config.topColorCount)
+        val results = quantizer.quantize(frame, AnalysisConfig().topColorCount)
 
         assertEquals(3, results.size)
         assertColorNear(red, results[0].rgb)
@@ -83,7 +77,7 @@ class KMeansColorQuantizerTest {
     fun `percentages sum to 100 and are sorted descending`() {
         val frame = frameOf(30, 30, listOf(10 to red, 8 to green, 7 to blue, 5 to yellow))
 
-        val results = quantizer.quantize(frame, config.topColorCount)
+        val results = quantizer.quantize(frame, AnalysisConfig().topColorCount)
 
         assertTrue("expected several colours but got $results", results.size >= 3)
         val total = results.sumOf { it.percentage.toDouble() }
@@ -101,8 +95,8 @@ class KMeansColorQuantizerTest {
         val clean = frameOf(40, 40, listOf(24 to red, 12 to green, 4 to blue))
         val noisy = frameOf(40, 40, listOf(24 to red, 12 to green, 4 to blue), noise = 4)
 
-        val cleanResults = quantizer.quantize(clean, config.topColorCount)
-        val noisyResults = quantizer.quantize(noisy, config.topColorCount)
+        val cleanResults = quantizer.quantize(clean, AnalysisConfig().topColorCount)
+        val noisyResults = quantizer.quantize(noisy, AnalysisConfig().topColorCount)
 
         assertEquals(cleanResults.size, noisyResults.size)
         assertColorNear(red, noisyResults[0].rgb, tolerance = 6)
@@ -115,8 +109,8 @@ class KMeansColorQuantizerTest {
     fun `identical input produces identical output every time`() {
         val frame = frameOf(40, 40, listOf(24 to red, 12 to green, 4 to blue))
 
-        val first = quantizer.quantize(frame, config.topColorCount)
-        val second = quantizer.quantize(frame, config.topColorCount)
+        val first = quantizer.quantize(frame, AnalysisConfig().topColorCount)
+        val second = quantizer.quantize(frame, AnalysisConfig().topColorCount)
 
         assertEquals(first, second)
     }
@@ -127,8 +121,8 @@ class KMeansColorQuantizerTest {
         // Same scene, slightly different exposure/lighting: every colour shifted by ~3 units.
         val frameB = frameOf(40, 40, listOf(24 to red, 12 to green, 4 to blue), noise = 3)
 
-        val resultsA = quantizer.quantize(frameA, config.topColorCount)
-        val resultsB = quantizer.quantize(frameB, config.topColorCount)
+        val resultsA = quantizer.quantize(frameA, AnalysisConfig().topColorCount)
+        val resultsB = quantizer.quantize(frameB, AnalysisConfig().topColorCount)
 
         assertEquals(
             resultsA.map { it.rgb.r > it.rgb.b },
@@ -148,7 +142,7 @@ class KMeansColorQuantizerTest {
     fun `single colour frame reports 100 percent`() {
         val frame = frameOf(16, 16, listOf(16 to red))
 
-        val results = quantizer.quantize(frame, config.topColorCount)
+        val results = quantizer.quantize(frame, AnalysisConfig().topColorCount)
 
         assertEquals(1, results.size)
         assertEquals(100f, results[0].percentage, 0.01f)
@@ -159,7 +153,7 @@ class KMeansColorQuantizerTest {
     fun `nearly identical colours are merged into one entry`() {
         val frame = frameOf(20, 20, listOf(10 to RgbColor(200, 10, 10), 10 to RgbColor(210, 15, 8)))
 
-        val results = quantizer.quantize(frame, config.topColorCount)
+        val results = quantizer.quantize(frame, AnalysisConfig().topColorCount)
 
         assertEquals("colours 11 units apart must merge, got $results", 1, results.size)
         assertEquals(100f, results[0].percentage, 0.01f)
@@ -185,14 +179,14 @@ class KMeansColorQuantizerTest {
     fun `empty frame yields no colours`() {
         val empty = FrameData(0, 0, IntArray(0))
 
-        assertTrue(quantizer.quantize(empty, config.topColorCount).isEmpty())
+        assertTrue(quantizer.quantize(empty, AnalysisConfig().topColorCount).isEmpty())
     }
 
     @Test
     fun `black frame is reported as black rather than dropped`() {
         val frame = frameOf(16, 16, listOf(16 to RgbColor.Black))
 
-        val results = quantizer.quantize(frame, config.topColorCount)
+        val results = quantizer.quantize(frame, AnalysisConfig().topColorCount)
 
         assertEquals(listOf(ColorResult(RgbColor.Black, 100f)), results)
     }

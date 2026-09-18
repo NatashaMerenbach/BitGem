@@ -29,7 +29,7 @@ class Yuv420Converter {
     /** Converts into a freshly allocated buffer. */
     fun convert(frame: Yuv420Frame): FrameData {
         val pixels = IntArray(frame.width * frame.height)
-        return convertInto(frame, pixels)
+        return convertIntoFrameData(frame, pixels)
     }
 
     /**
@@ -38,7 +38,7 @@ class Yuv420Converter {
      * The result *aliases* [output]; the analyser reuses one scratch array per analyser
      * instance to avoid allocating ~1.2 MB of garbage per frame at 10 frames/s.
      */
-    fun convertInto(frame: Yuv420Frame, output: IntArray): FrameData {
+    fun convertIntoFrameData(frame: Yuv420Frame, output: IntArray): FrameData {
         val width = frame.width
         val height = frame.height
         require(output.size >= width * height) {

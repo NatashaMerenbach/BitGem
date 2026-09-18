@@ -45,6 +45,29 @@ class PixelSamplerTest {
     }
 
     @Test
+    fun `an oversized buffer is legal and only the required prefix is written`() {
+        val frame = frame(7, 5)
+        val required = sampler.sampleCount(7, 5, 3)
+        // Poisoned tail: a reused buffer must not leak stale samples into the answer.
+        val buffer = IntArray(required + 8) { -1 }
+
+        val written = sampler.sampleInto(frame, 3, buffer)
+
+        assertEquals(required, written)
+        assertTrue(
+            "the tail must stay untouched but was ${buffer.drop(required)}",
+            buffer.drop(required).all { it == -1 },
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `a buffer smaller than the sample count is rejected`() {
+        val tooSmall = IntArray(sampler.sampleCount(7, 5, 3) - 1)
+
+        sampler.sampleInto(frame(7, 5), 3, tooSmall)
+    }
+
+    @Test
     fun `empty frame yields no samples`() {
         val empty = FrameData(0, 0, IntArray(0))
 

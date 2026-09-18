@@ -35,14 +35,14 @@ class PixelSampler {
     }
 
     /**
-     * Samples into [into], which must hold at least [sampleCount] values.
+     * Samples into [sampleBufferOut], which must hold at least [sampleCount] values.
      *
      * @return the number of ARGB values written.
      */
-    fun sampleInto(frame: FrameData, step: Int, into: IntArray): Int {
+    fun sampleInto(frame: FrameData, step: Int, sampleBufferOut: IntArray): Int {
         val required = sampleCount(frame.width, frame.height, step)
-        require(into.size >= required) {
-            "Sample buffer too small: ${into.size} values, $required required"
+        require(sampleBufferOut.size >= required) {
+            "Sample buffer too small: ${sampleBufferOut.size} values, at least $required required"
         }
         if (required == 0) return 0
 
@@ -50,15 +50,15 @@ class PixelSampler {
         val height = frame.height
         val pixels = frame.pixels
         var count = 0
-        var y = 0
-        while (y < height) {
-            val rowOffset = y * width
-            var x = 0
-            while (x < width) {
-                into[count++] = pixels[rowOffset + x]
-                x += step
+        var currentHeight = 0
+        while (currentHeight < height) {
+            val rowOffset = currentHeight * width
+            var currentWidth = 0
+            while (currentWidth < width) {
+                sampleBufferOut[count++] = pixels[rowOffset + currentWidth]
+                currentWidth += step
             }
-            y += step
+            currentHeight += step
         }
         return count
     }

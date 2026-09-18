@@ -7,7 +7,7 @@ package com.bitgem.colorcam.domain.model
  * so a generated `equals`/`hashCode` would be misleading.
  *
  * The analyser reuses a scratch buffer across frames, so a `FrameData` produced by
- * [com.bitgem.colorcam.domain.analysis.Yuv420Converter.convertInto] is only valid for the
+ * [com.bitgem.colorcam.domain.analysis.Yuv420Converter.convertIntoFrameData] is only valid for the
  * duration of the current analysis pass.
  */
 class FrameData(

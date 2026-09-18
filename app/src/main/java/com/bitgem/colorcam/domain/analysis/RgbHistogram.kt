@@ -6,18 +6,18 @@ package com.bitgem.colorcam.domain.analysis
  * Binning first, clustering second, is the key performance decision of this project:
  * k-means over ~19,200 *pixels* would need 19,200 × k distance computations per iteration;
  * k-means over the ~300-2,000 *non-empty bins* needs a fraction of that, while producing
- * the same answer (each bin carries its population as a weight, and its mean colour —
- * not its centre — is used as the point, so the binning does not shift the resulting
- * colours).
+ * the same answer (each bin carries its population as a weight, and its mean color —
+ * not its center — is used as the point, so the binning does not shift the resulting
+ * colors).
  *
  * The arrays are allocated once and reused forever. Instead of clearing 32,768 slots per
  * frame (≈4 × 32k writes of pure overhead), each slot carries an `epoch` stamp: a slot whose
- * stamp differs from the current epoch is treated as empty and lazily re-initialised.
+ * stamp differs from the current epoch is treated as empty and lazily re-initialized.
  * `usedBins` records only the slots touched this epoch, so the clustering stage iterates over
  * exactly the non-empty bins.
  *
  * **Not thread-safe** on purpose: it is confined to a single analysis thread and its scratch
- * arrays are reused. Callers must serialise access (the repository does).
+ * arrays are reused. Callers must serialize access (the repository does).
  */
 internal class RgbHistogram(val bitsPerChannel: Int) {
 

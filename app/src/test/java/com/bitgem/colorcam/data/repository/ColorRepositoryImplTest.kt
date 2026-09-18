@@ -6,8 +6,9 @@ import com.bitgem.colorcam.data.camera.ElapsedTimeSource
 import com.bitgem.colorcam.data.camera.ImageToYuv420Frame
 import com.bitgem.colorcam.domain.analysis.AnalysisConfig
 import com.bitgem.colorcam.domain.analysis.ColorSmoother
-import com.bitgem.colorcam.domain.analysis.KMeansColorQuantizer
+import com.bitgem.colorcam.domain.analysis.ColorQuantizer
 import com.bitgem.colorcam.domain.analysis.Yuv420Converter
+import com.bitgem.colorcam.domain.model.RgbColor
 import java.nio.ByteBuffer
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -26,24 +27,15 @@ import org.mockito.Mockito.verify
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ColorRepositoryImplTest {
 
-    private val config = AnalysisConfig(
-        samplingStep = 1,
-        bitsPerChannel = 5,
-        // clusterCount must be >= topColorCount; the config's own invariant check enforces it.
-        clusterCount = 6,
-        mergeDistance = 24.0,
-        topColorCount = 5,
-        minFrameIntervalMillis = 100L,
-    )
 
     private var now = 1_000L
 
     private val repository = ColorRepositoryImpl(
         imageToYuv420Frame = ImageToYuv420Frame(),
         yuv420Converter = Yuv420Converter(),
-        colorQuantizer = KMeansColorQuantizer(config),
+        colorQuantizer = ColorQuantizer(),
         colorSmoother = ColorSmoother(alpha = 1f),
-        analysisConfig = config,
+        analysisConfig = AnalysisConfig(),
         elapsedTime = ElapsedTimeSource { now },
     )
 
@@ -124,29 +116,55 @@ class ColorRepositoryImplTest {
     }
 
     @Test
-    fun `frames inside the throttle window are dropped and still closed`() {
+    fun `frames inside the throttle window are dropped and still closed`() = runTest {
         val first = halfRedHalfBlue()
-        val second = halfRedHalfBlue()
+        // A frame nobody could mistake for the first one: if it were analysed, the breakdown
+        // would become a single 100% white swatch.
+        val second = whiteFrame()
 
         repository.analyze(first)
         repository.analyze(second)
 
-        assertEquals(1L, repository.analysedFrameCount.get())
-        assertEquals(1L, repository.skippedFrameCount.get())
-        verify(second).close()
+        // The published breakdown still describes the first frame, so the second one really was
+        // dropped rather than merely being cheap to analyse.
+        val colors = repository.observeTopColors().first()
+        assertEquals(2, colors.size)
+        assertTrue(
+            "expected the first frame's red and blue but got $colors",
+            colors.any { it.rgb.r > 200 && it.rgb.b < 20 },
+        )
+        assertTrue(
+            "expected the first frame's red and blue but got $colors",
+            colors.any { it.rgb.b > 200 && it.rgb.r < 20 },
+        )
+
         // Crucially, the dropped frame is closed too: leaking ImageProxies stalls the camera.
+        verify(second).close()
         verify(first).close()
     }
 
     @Test
-    fun `frames after the throttle window are analysed again`() {
+    fun `frames after the throttle window are analysed again`() = runTest {
         repository.analyze(halfRedHalfBlue())
-        now += config.minFrameIntervalMillis + 1
+        now += AnalysisConfig().minFrameIntervalMillis + 1
 
-        repository.analyze(halfRedHalfBlue())
+        repository.analyze(whiteFrame())
 
-        assertEquals(2L, repository.analysedFrameCount.get())
+        // Now the second frame *is* the breakdown: the throttle released it.
+        val colors = repository.observeTopColors().first()
+        assertEquals(1, colors.size)
+        assertEquals(RgbColor.White, colors[0].rgb)
+        assertEquals(100f, colors[0].percentage, 0.5f)
     }
+
+    /** BT.601 white (Y=255, U=V=128) — one uniform colour, so a single 100% swatch. */
+    private fun whiteFrame(): ImageProxy = yuvImage(
+        width = 8,
+        height = 8,
+        yBandRows = 8,
+        yTop = 255, uTop = 128, vTop = 128,
+        yBottom = 255, uBottom = 128, vBottom = 128,
+    )
 
     @Test
     fun `a failing frame is reported instead of crashing the pipeline`() = runTest {

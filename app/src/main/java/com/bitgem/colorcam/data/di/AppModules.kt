@@ -3,9 +3,8 @@ package com.bitgem.colorcam.data.di
 import com.bitgem.colorcam.data.camera.ElapsedTimeSource
 import com.bitgem.colorcam.data.repository.ColorRepositoryImpl
 import com.bitgem.colorcam.domain.analysis.AnalysisConfig
-import com.bitgem.colorcam.domain.analysis.ColorQuantizer
 import com.bitgem.colorcam.domain.analysis.ColorSmoother
-import com.bitgem.colorcam.domain.analysis.KMeansColorQuantizer
+import com.bitgem.colorcam.domain.analysis.ColorQuantizer
 import com.bitgem.colorcam.domain.analysis.Yuv420Converter
 import com.bitgem.colorcam.domain.repository.ColorRepository
 import dagger.Binds
@@ -38,7 +37,7 @@ object AnalysisModule {
 
     @Provides
     @Singleton
-    fun provideColorQuantizer(config: AnalysisConfig): ColorQuantizer = KMeansColorQuantizer(config)
+    fun provideColorQuantizer(): ColorQuantizer = ColorQuantizer()
 
     @Provides
     @Singleton

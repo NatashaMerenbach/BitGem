@@ -66,7 +66,7 @@ class ImageFrameMapperTest {
     fun `maps dimensions, strides, buffers and timestamp`() {
         val image = redYuvImage(width = 8, height = 4, yRowStride = 12)
 
-        val frame = mapper.map(image)
+        val frame = mapper.convertToYUV420Frame(image)
 
         assertEquals(8, frame.width)
         assertEquals(4, frame.height)
@@ -83,7 +83,7 @@ class ImageFrameMapperTest {
     fun `a mocked red frame converts to red`() {
         val image = redYuvImage(width = 8, height = 4)
 
-        val pixel = RgbColor.fromArgb(converter.convert(mapper.map(image)).pixelAt(3, 2))
+        val pixel = RgbColor.fromArgb(converter.convert(mapper.convertToYUV420Frame(image)).pixelAt(3, 2))
 
         // BT.601 red (Y=76, U=84, V=255) lands on 254 rather than 255: the 1.402 coefficient
         // cannot quite reach full scale from there.
@@ -95,13 +95,13 @@ class ImageFrameMapperTest {
         val image = redYuvImage(width = 8, height = 4)
         `when`(image.format).thenReturn(0x1) // RGBA_8888
 
-        assertThrows(IllegalArgumentException::class.java) { mapper.map(image) }
+        assertThrows(IllegalArgumentException::class.java) { mapper.convertToYUV420Frame(image) }
     }
 
     @Test
     fun `rejects an image without three planes`() {
         val image = image(8, 4, planes = arrayOf(plane(ByteArray(4), 8, 1)))
 
-        assertThrows(IllegalArgumentException::class.java) { mapper.map(image) }
+        assertThrows(IllegalArgumentException::class.java) { mapper.convertToYUV420Frame(image) }
     }
 }

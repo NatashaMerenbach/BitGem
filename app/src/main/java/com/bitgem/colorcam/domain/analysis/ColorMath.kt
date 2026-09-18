@@ -22,16 +22,9 @@ object ColorMath {
 
     fun distance(a: RgbColor, b: RgbColor): Double = sqrt(distanceSquared(a, b))
 
-    fun distance(a: RgbColor, r: Double, g: Double, b: Double): Double {
-        val dr = a.r - r
-        val dg = a.g - g
-        val db = a.b - b
-        return sqrt(dr * dr + dg * dg + db * db)
-    }
-
     /** Linear interpolation; `t = 0` returns [from], `t = 1` returns [to]. */
-    fun lerp(from: RgbColor, to: RgbColor, t: Float): RgbColor {
-        val clamped = t.coerceIn(0f, 1f)
+    fun linearInterpolation(from: RgbColor, to: RgbColor, t: Float): RgbColor {
+        val clamped : Float = t.coerceIn(0f, 1f)
         return RgbColor.of(
             from.r + (to.r - from.r) * clamped,
             from.g + (to.g - from.g) * clamped,
