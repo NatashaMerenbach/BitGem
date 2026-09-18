@@ -11,7 +11,7 @@ import com.bitgem.colorcam.domain.model.ColorResult
 import com.bitgem.colorcam.domain.model.RgbColor
 import com.bitgem.colorcam.ui.camera.CameraScreen
 import com.bitgem.colorcam.ui.camera.ColorAnalysisUiState
-import com.bitgem.colorcam.ui.camera.components.ColorBreakdownPanel
+import com.bitgem.colorcam.ui.camera.components.ColorsPanel
 import com.bitgem.colorcam.ui.theme.ColorCamTheme
 import java.util.concurrent.Executors
 import org.junit.Assert.assertEquals
@@ -49,7 +49,7 @@ class ColorBreakdownPanelTest {
     fun showsTheHeadingPercentagesAndRgbValues() {
         composeRule.setContent {
             ColorCamTheme {
-                ColorBreakdownPanel(colorResults = colors, isWaitingForFrames = false)
+                ColorsPanel(colorResults = colors, isWaitingForFrames = false)
             }
         }
 
@@ -66,7 +66,7 @@ class ColorBreakdownPanelTest {
     fun showsTheWaitingStateBeforeTheFirstFrame() {
         composeRule.setContent {
             ColorCamTheme {
-                ColorBreakdownPanel(colorResults = emptyList(), isWaitingForFrames = true)
+                ColorsPanel(colorResults = emptyList(), isWaitingForFrames = true)
             }
         }
 
@@ -77,7 +77,7 @@ class ColorBreakdownPanelTest {
     fun rendersFewerRowsWhenFewerColoursExist() {
         composeRule.setContent {
             ColorCamTheme {
-                ColorBreakdownPanel(
+                ColorsPanel(
                     colorResults = listOf(ColorResult(RgbColor(10, 10, 10), 100f)),
                     isWaitingForFrames = false,
                 )

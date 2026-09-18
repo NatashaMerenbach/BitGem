@@ -3,21 +3,16 @@ package com.bitgem.colorcam.data.repository
 import androidx.camera.core.ImageInfo
 import androidx.camera.core.ImageProxy
 import com.bitgem.colorcam.data.camera.ElapsedTimeSource
-import com.bitgem.colorcam.data.camera.ImageProxyFrameMapper
+import com.bitgem.colorcam.data.camera.ImageFrameMapper
 import com.bitgem.colorcam.domain.analysis.AnalysisConfig
 import com.bitgem.colorcam.domain.analysis.ColorSmoother
 import com.bitgem.colorcam.domain.analysis.KMeansColorQuantizer
 import com.bitgem.colorcam.domain.analysis.Yuv420Converter
-import com.bitgem.colorcam.domain.model.FrameData
-import com.bitgem.colorcam.domain.model.RgbColor
 import java.nio.ByteBuffer
-import java.util.concurrent.Executors
-import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -42,23 +37,15 @@ class ColorRepositoryImplTest {
     )
 
     private var now = 1_000L
-    private val executor = Executors.newSingleThreadExecutor()
-    private val dispatcher = executor.asCoroutineDispatcher()
 
     private val repository = ColorRepositoryImpl(
-        mapper = ImageProxyFrameMapper(),
-        converter = Yuv420Converter(),
-        quantizer = KMeansColorQuantizer(config),
-        smoother = ColorSmoother(alpha = 1f),
-        config = config,
+        imageFrameMapper = ImageFrameMapper(),
+        yuv420Converter = Yuv420Converter(),
+        colorQuantizer = KMeansColorQuantizer(config),
+        colorSmoother = ColorSmoother(alpha = 1f),
+        analysisConfig = config,
         elapsedTime = ElapsedTimeSource { now },
-        analysisDispatcher = dispatcher,
     )
-
-    @After
-    fun tearDown() {
-        executor.shutdown()
-    }
 
     private fun yuvImage(
         width: Int,
@@ -176,27 +163,6 @@ class ColorRepositoryImplTest {
 
         assertEquals(1, errors.size)
         verify(brokenImage).close()
-    }
-
-    @Test
-    fun `the pull API analyses a supplied frame`() = runTest {
-        val width = 8
-        // Two rows of green, two rows of red.
-        val pixels = IntArray(width * 4) { index ->
-            if (index < width * 2) RgbColor(10, 200, 10).argb else RgbColor(200, 10, 10).argb
-        }
-
-        val colors = repository.analyzeColors(FrameData(width, 4, pixels))
-
-        assertEquals(2, colors.size)
-        // Order between two equal-percentage colours is an implementation detail; the content
-        // and the shares are not.
-        assertEquals(
-            setOf(RgbColor(200, 10, 10), RgbColor(10, 200, 10)),
-            colors.map { it.rgb }.toSet(),
-        )
-        assertEquals(50f, colors[0].percentage, 0.5f)
-        assertEquals(50f, colors[1].percentage, 0.5f)
     }
 
     @Test

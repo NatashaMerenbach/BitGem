@@ -56,13 +56,13 @@ fun CameraPreview(
 
     DisposableEffect(lifecycleOwner, analyzer, analysisExecutor) {
         val disposed = AtomicBoolean(false)
-        val providerFuture = ProcessCameraProvider.getInstance(context)
+        val cameraProvider = ProcessCameraProvider.getInstance(context)
         val mainExecutor = ContextCompat.getMainExecutor(context)
 
-        providerFuture.addListener(
+        cameraProvider.addListener(
             {
                 try {
-                    val provider = providerFuture.get()
+                    val provider = cameraProvider.get()
                     if (disposed.get()) return@addListener
 
                     val preview = Preview.Builder()
@@ -106,8 +106,8 @@ fun CameraPreview(
 
         onDispose {
             disposed.set(true)
-            if (providerFuture.isDone) {
-                runCatching { providerFuture.get().unbindAll() }
+            if (cameraProvider.isDone) {
+                runCatching { cameraProvider.get().unbindAll() }
             }
         }
     }

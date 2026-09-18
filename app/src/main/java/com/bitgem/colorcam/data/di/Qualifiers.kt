@@ -6,8 +6,3 @@ import javax.inject.Qualifier
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class AnalysisExecutor
-
-/** Coroutine view of [AnalysisExecutor] — same single thread, so scratch buffers stay safe. */
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class AnalysisDispatcher

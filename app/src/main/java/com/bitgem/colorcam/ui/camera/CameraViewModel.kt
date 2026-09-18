@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bitgem.colorcam.data.di.AnalysisExecutor
 import com.bitgem.colorcam.domain.model.ColorResult
-import com.bitgem.colorcam.domain.repository.ColorRepository
 import com.bitgem.colorcam.domain.usecase.ObserveErrorsUseCase
 import com.bitgem.colorcam.domain.usecase.ObserveTopColorsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -48,7 +47,7 @@ sealed interface CameraError {
 @HiltViewModel
 class CameraViewModel @Inject constructor(
     observeTopColors: ObserveTopColorsUseCase,
-    observeErrorsUseCase: ObserveErrorsUseCase,
+    val observeErrorsUseCase: ObserveErrorsUseCase,
     val analyzer: ImageAnalysis.Analyzer,
     @AnalysisExecutor val analysisExecutor: Executor,
 ) : ViewModel() {
@@ -78,6 +77,9 @@ class CameraViewModel @Inject constructor(
 
     fun onCameraError(error: Throwable) {
         cameraError.value = CameraError.CameraUnavailable
+        viewModelScope.launch {//NM - was fixed here, but I think we should still log the error for debugging purposes
+            observeErrorsUseCase().collect { cameraError.value = CameraError.CameraUnavailable }
+        }
     }
 
     fun onDismissError() {

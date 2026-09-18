@@ -95,7 +95,7 @@ temporal smoothing exists for); the emulator's virtual-scene camera works too.
 
 ```bash
 # All JVM unit tests, no device needed — the interesting ones.
-# Verified: 63 tests, 0 failures (31 analysis / 9 camera / 9 model / 6 repository / 8 usecase)
+# Verified: 56 tests, 0 failures (31 analysis / 9 camera / 9 model / 5 repository / 2 usecase)
 ./gradlew testDebugUnitTest
 
 # Instrumented Compose UI tests (needs a device/emulator) — NOT yet executed here
@@ -127,7 +127,7 @@ Google's recommended app architecture (UI → domain → data), as layered **pac
       ├── analysis/    Yuv420Converter, PixelSampler, RgbHistogram,
       │                KMeansColorQuantizer, ColorSmoother, ColorMath
       ├── repository/  ColorRepository (interface)
-      └── usecase/     GetTopColorsUseCase, ObserveTopColorsUseCase
+      └── usecase/     ObserveTopColorsUseCase, ObserveErrorsUseCase
 ```
 
 The layering is one-directional — `ui → domain ← data` — and the dependency rule is that

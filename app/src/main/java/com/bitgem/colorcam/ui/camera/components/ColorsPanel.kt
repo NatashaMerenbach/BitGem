@@ -44,7 +44,7 @@ import com.bitgem.colorcam.ui.theme.PanelTextColor
  * found five colours or two.
  */
 @Composable
-fun ColorBreakdownPanel(
+fun ColorsPanel(
     colorResults: List<ColorResult>,
     isWaitingForFrames: Boolean,
     modifier: Modifier = Modifier,
@@ -82,7 +82,7 @@ fun ColorBreakdownPanel(
         }
 
         colorResults.forEach { colorResult ->
-            ColorBreakdownRow(
+            ColorRow(
                 colorResult = colorResult,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -94,7 +94,7 @@ fun ColorBreakdownPanel(
 
 /** One swatch: the colour as a filled box holding the percentage, the RGB values underneath. */
 @Composable
-fun ColorBreakdownRow(
+fun ColorRow(
     colorResult: ColorResult,
     modifier: Modifier = Modifier,
 ) {
@@ -136,10 +136,10 @@ fun ColorBreakdownRow(
 
 @Preview(heightDp = 480, widthDp = 140)
 @Composable
-private fun ColorBreakdownPanelPreview() {
+private fun ColorsPanelPreview() {
     ColorCamTheme {
         Box(modifier = Modifier.fillMaxSize()) {
-            ColorBreakdownPanel(
+            ColorsPanel(
                 colorResults = listOf(
                     ColorResult(RgbColor(116, 114, 94), 8.24f),
                     ColorResult(RgbColor(101, 99, 77), 7.11f),

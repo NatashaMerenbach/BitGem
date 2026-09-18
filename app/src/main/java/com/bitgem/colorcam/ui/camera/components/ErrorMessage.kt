@@ -1,5 +1,7 @@
 package com.bitgem.colorcam.ui.camera.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,8 +14,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.bitgem.colorcam.R
+import com.bitgem.colorcam.ui.theme.ColorCamTheme
 
 /**
  * Transient, dismissible message (camera could not be bound, analysis failed).
@@ -22,7 +26,7 @@ import com.bitgem.colorcam.R
  * surfaces.
  */
 @Composable
-fun ErrorBanner(
+fun ErrorMessage(
     message: String,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
@@ -49,6 +53,29 @@ fun ErrorBanner(
                     color = MaterialTheme.colorScheme.onPrimary,
                 )
             }
+        }
+    }
+}
+
+/**
+ * Rendered over the app background because the banner is designed to sit at the bottom of the
+ * screen on top of the preview; the message is read from resources so the preview shows the real
+ * string (and the real wrapping) rather than a placeholder.
+ */
+@Preview(widthDp = 360, heightDp = 108)
+@Composable
+private fun ErrorMessagePreview() {
+    ColorCamTheme {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(16.dp),
+        ) {
+            ErrorMessage(
+                message = stringResource(R.string.error_camera_unavailable),
+                onDismiss = {},
+            )
         }
     }
 }

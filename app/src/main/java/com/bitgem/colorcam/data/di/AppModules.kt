@@ -16,8 +16,6 @@ import dagger.hilt.components.SingletonComponent
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import javax.inject.Singleton
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.asCoroutineDispatcher
 
 /**
  * Wires the domain's abstractions to their implementations.
@@ -63,12 +61,6 @@ object AnalysisModule {
     @AnalysisExecutor
     fun provideAnalysisExecutor(): Executor =
         Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "color-analysis") }
-
-    @Provides
-    @Singleton
-    @AnalysisDispatcher
-    fun provideAnalysisDispatcher(@AnalysisExecutor executor: Executor): CoroutineDispatcher =
-        executor.asCoroutineDispatcher()
 }
 
 @Module

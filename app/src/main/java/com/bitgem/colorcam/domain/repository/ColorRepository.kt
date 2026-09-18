@@ -1,19 +1,21 @@
 package com.bitgem.colorcam.domain.repository
 
 import com.bitgem.colorcam.domain.model.ColorResult
-import com.bitgem.colorcam.domain.model.FrameData
 import kotlinx.coroutines.flow.Flow
 
 /**
  * The domain's view of "where colours come from".
  *
- * Two entry points, because the app needs both:
- *  - [observeTopColors] — the live pipeline used by the camera screen. The implementation
- *    is fed frames by the camera analyser and pushes the newest result to every collector.
- *  - [analyzeColors] — a pull-based, one-shot analysis of a frame supplied by the caller,
- *    which is what makes the pipeline usable from tests and from any future
- *    non-camera source (an imported photo, a widget, a share target).
- *  - [observeAnalysisErrors] — the failure channel of the live pipeline.
+ *  - [observeTopColors] — the live pipeline used by the camera screen. The implementation is
+ *    fed frames by the camera analyser and pushes the newest result to every collector.
+ *  - [observeAnalysisErrors] — the failure channel of that pipeline.
+ *
+ * There is deliberately no pull/one-shot entry point: the app only ever analyses the live
+ * camera stream, and a second entry point would have to duplicate the pipeline's locking and
+ * dispatcher rules for a caller that does not exist. Adding one back (for an imported photo, a
+ * share target, a widget) is a small, well-defined change: a `suspend fun` that runs
+ * [com.bitgem.colorcam.domain.analysis.ColorQuantizer.quantize] on the analysis dispatcher under
+ * the same lock.
  */
 interface ColorRepository {
 
@@ -23,9 +25,6 @@ interface ColorRepository {
      * Emits an empty list until the first frame has been analysed.
      */
     fun observeTopColors(): Flow<List<ColorResult>>
-
-    /** Analyses one frame on a background dispatcher and returns the top colours. */
-    suspend fun analyzeColors(frame: FrameData): List<ColorResult>
 
     /**
      * Failures encountered while analysing frames — a single malformed frame must not kill

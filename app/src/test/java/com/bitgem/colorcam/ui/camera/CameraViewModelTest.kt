@@ -3,7 +3,6 @@ package com.bitgem.colorcam.ui.camera
 import androidx.camera.core.ImageAnalysis
 import com.bitgem.colorcam.MainDispatcherRule
 import com.bitgem.colorcam.domain.model.ColorResult
-import com.bitgem.colorcam.domain.model.FrameData
 import com.bitgem.colorcam.domain.model.RgbColor
 import com.bitgem.colorcam.domain.repository.ColorRepository
 import com.bitgem.colorcam.domain.usecase.ObserveErrorsUseCase
@@ -127,7 +126,6 @@ class CameraViewModelTest {
         private val errors: MutableSharedFlow<Throwable>,
     ) : ColorRepository {
         override fun observeTopColors(): Flow<List<ColorResult>> = colors
-        override suspend fun analyzeColors(frame: FrameData): List<ColorResult> = colors.value
         override fun observeAnalysisErrors(): Flow<Throwable> = errors
     }
 }

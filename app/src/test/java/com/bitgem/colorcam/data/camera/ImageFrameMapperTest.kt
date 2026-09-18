@@ -15,9 +15,9 @@ import org.mockito.Mockito.mock
  * CameraX's `ImageProxy`/`PlaneProxy` are interfaces, so the mapping can be verified on a
  * plain JVM with Mockito — no camera, no device, no Robolectric.
  */
-class ImageProxyFrameMapperTest {
+class ImageFrameMapperTest {
 
-    private val mapper = ImageProxyFrameMapper()
+    private val mapper = ImageFrameMapper()
     private val converter = Yuv420Converter()
 
     private fun plane(buffer: ByteArray, rowStride: Int, pixelStride: Int): ImageProxy.PlaneProxy {

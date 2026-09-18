@@ -3,14 +3,13 @@ package com.bitgem.colorcam.domain.usecase
 import com.bitgem.colorcam.domain.model.ColorResult
 import com.bitgem.colorcam.domain.model.RgbColor
 import com.bitgem.colorcam.domain.repository.ColorRepository
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
+import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
 
 /**
@@ -25,15 +24,15 @@ class ObserveTopColorsUseCaseTest {
     }
 
     @Test
-    fun `emits the repository colours truncated to the limit`() = runTest {
+    fun `forwards the repository colours unchanged`() = runTest {
         `when`(repository.observeTopColors()).thenReturn(flowOf(colors))
 
         val emitted = mutableListOf<List<ColorResult>>()
         ObserveTopColorsUseCase(repository)().collect { emitted += it }
 
-        assertEquals(1, emitted.size)
-        assertEquals(5, emitted.first().size)
-        assertEquals(colors.take(5), emitted.first())
+        // No truncation happens here: the pipeline already caps the list at
+        // AnalysisConfig.topColorCount, which is the single owner of that number.
+        assertEquals(listOf(colors), emitted)
         verify(repository).observeTopColors()
     }
 
@@ -45,10 +44,5 @@ class ObserveTopColorsUseCaseTest {
         ObserveTopColorsUseCase(repository)().collect { emitted += it }
 
         assertEquals(0, emitted.size)
-    }
-
-    @Test(expected = IllegalArgumentException::class)
-    fun `rejects a non-positive limit`() {
-        ObserveTopColorsUseCase(repository)(limit = -1)
     }
 }

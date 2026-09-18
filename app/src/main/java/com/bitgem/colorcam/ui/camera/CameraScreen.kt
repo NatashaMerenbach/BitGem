@@ -20,8 +20,8 @@ import com.bitgem.colorcam.R
 import com.bitgem.colorcam.domain.model.ColorResult
 import com.bitgem.colorcam.domain.model.RgbColor
 import com.bitgem.colorcam.ui.camera.components.CameraPermissionRequest
-import com.bitgem.colorcam.ui.camera.components.ColorBreakdownPanel
-import com.bitgem.colorcam.ui.camera.components.ErrorBanner
+import com.bitgem.colorcam.ui.camera.components.ColorsPanel
+import com.bitgem.colorcam.ui.camera.components.ErrorMessage
 import com.bitgem.colorcam.ui.theme.ColorCamTheme
 import java.util.concurrent.Executor
 
@@ -62,7 +62,7 @@ fun CameraScreen(
                     modifier = Modifier.fillMaxSize(),
                 )
 
-                ColorBreakdownPanel(
+                ColorsPanel(
                     colorResults = state.topColors,
                     isWaitingForFrames = state.isWaitingForFrames,
                     modifier = Modifier
@@ -81,7 +81,7 @@ fun CameraScreen(
         }
 
         state.cameraError?.let { error ->
-            ErrorBanner(
+            ErrorMessage(
                 message = stringResource(error.messageRes),
                 onDismiss = onDismissError,
                 modifier = Modifier

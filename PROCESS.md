@@ -22,7 +22,7 @@ quantisation.
   └── ui/       Compose screens, ViewModel, theme
 ```
 
-**Verified build:** `./gradlew testDebugUnitTest assembleDebug` → `BUILD SUCCESSFUL`, **63 JVM unit
+**Verified build:** `./gradlew testDebugUnitTest assembleDebug` → `BUILD SUCCESSFUL`, **56 JVM unit
 tests, 0 failures**, `app-debug.apk` (11.35 MB) plus `app-debug-androidTest.apk` (0.94 MB).
 
 ---
@@ -93,21 +93,30 @@ ViewModel own CameraX setup that only the composition's lifecycle knows about; (
 camera inside the composable and casting the repository — rejected, a cast is a worse contract than
 an interface.
 
-### 2.3 Two entry points on one pipeline
+### 2.3 One entry point, plus an error channel
 
 ```kotlin
 interface ColorRepository {
-    fun observeTopColors(): Flow<List<ColorResult>>   // live camera path
-    suspend fun analyzeColors(frame: FrameData): List<ColorResult>  // one-shot, caller-supplied
+    fun observeTopColors(): Flow<List<ColorResult>>   // the live camera path
     fun observeAnalysisErrors(): Flow<Throwable>      // per-frame failures, never thrown at the camera
 }
 ```
 
-`observeTopColors()` is what the screen uses (conflated `StateFlow`). `analyzeColors()` exists so the
-algorithm is reachable for a still image, a share-target, or a test — and so that the *interesting*
-tests do not need a camera at all. The two paths share one pipeline but not one state: the pull path
-deliberately skips the temporal smoother, because a one-shot analysis must answer for the frame it
-was given, not for a blend with whatever the camera last saw.
+`observeTopColors()` is what the screen uses (conflated `StateFlow`, so a slow collector skips
+values instead of slowing the camera down).
+
+An earlier revision also carried a pull-based entry point — `suspend fun getTopColors(frame:
+FrameData): List<ColorResult>`, driven by a `GetTopColorsUseCase` — on the grounds that the
+algorithm should be reachable for a still image, a share target or a widget. It was removed: no
+shipping code called it (the camera screen is the only consumer), so it was a tested but dead seam
+whose only guaranteed future was drift. Keeping it would also have meant duplicating the
+pipeline's dispatcher and locking rules for a caller that did not exist.
+
+The seam is still easy to re-add when a feature needs it: a `suspend fun` that runs
+`ColorQuantizer.quantize` on the analysis dispatcher under the same lock. What it must *not* do is
+inherit the temporal smoother's state — a one-shot analysis has to answer for the frame it was
+given, not for a blend with whatever the camera last saw. That constraint is recorded here (and in
+the interface's KDoc) precisely because the code that enforced it is gone.
 
 ### 2.4 No logic in the ViewModel, no logic in the composables
 
@@ -233,8 +242,9 @@ Three layers, each doing one job:
 3. A conflated `StateFlow` — a slow collector skips values instead of back-pressuring the pipeline.
 
 Everything runs on one dedicated thread (`Executors.newSingleThreadExecutor` named
-`color-analysis`, exposed to coroutines as a dispatcher via `asCoroutineDispatcher()`). The
-pipeline owns reusable scratch buffers, so it must not run twice at once; every entry point takes
+`color-analysis`): the UI receives it as `@AnalysisExecutor` and hands it to
+`ImageAnalysis.setAnalyzer`, so CameraX invokes the analyzer on that single thread. The
+pipeline owns reusable scratch buffers, so it must not run twice at once; the analyzer takes
 one lock, which makes the class correct even if someone hands it a multi-threaded executor and costs
 nothing in practice (the camera path never contends).
 
@@ -379,9 +389,9 @@ Everything below is the output of a real run in this repository, not an expectat
 
 ### 5.1 The unit tests
 
-`./gradlew testDebugUnitTest` → **63 tests, 0 failures** (31 in `domain/analysis`, 9 in
-`domain/model`, 8 in `domain/usecase`, 9 in `data/camera`, 6 in `data/repository`), no device and no
-Robolectric; the colour pipeline itself (the 40 domain tests) runs in about a second.
+`./gradlew testDebugUnitTest` → **56 tests, 0 failures** (31 in `domain/analysis`, 9 in
+`domain/model`, 2 in `domain/usecase`, 9 in `data/camera`, 5 in `data/repository`), no device and no
+Robolectric; the colour pipeline itself (the 42 domain tests) runs in about a second.
 
 **Known-colour fixtures.** The converter is checked against the BT.601 reference vectors rather than
 against itself:
@@ -420,8 +430,8 @@ exactly five, the five heaviest.
 **The camera path without a camera.** `ImageProxy` and `PlaneProxy` are interfaces, so Mockito mocks
 them and the repository is driven end-to-end: a mocked half-red/half-blue frame produces a 50/50
 breakdown; a second frame inside the throttle window is dropped and still closed; a frame with no
-planes reports through the error channel instead of crashing the pipeline; the pull API returns the
-right colours for a supplied `FrameData`.
+planes reports through the error channel instead of crashing the pipeline; and the colour flow is
+verified to start empty and then reflect the latest frame.
 
 ### 5.2 The UI tests
 

@@ -18,14 +18,14 @@ import javax.inject.Singleton
  * *before* closing the proxy — see `ColorRepositoryImpl.analyze`.
  */
 @Singleton
-class ImageProxyFrameMapper @Inject constructor() {
+class ImageFrameMapper @Inject constructor() {
 
     fun map(image: ImageProxy): Yuv420Frame {
         require(image.format == ImageProxyFormat.YUV_420_888) {
             "ImageProxyFrameMapper only understands YUV_420_888 but got format ${image.format}"
         }
         val planes = image.planes
-        require(planes.size >= 3) {
+        require(planes.size >= 3) { //throw IllegalArgumentException
             "A YUV_420_888 image must expose 3 planes but exposed ${planes.size}"
         }
 
