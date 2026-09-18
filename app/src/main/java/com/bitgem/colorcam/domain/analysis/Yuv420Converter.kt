@@ -22,7 +22,7 @@ import com.bitgem.colorcam.domain.model.Yuv420Frame
  * with `U' = U-128`, `V' = V-128`) assumes full-range video levels, which is what Android
  * camera devices output for YUV_420_888. Limited-range (16..235) content would need a
  * scale/offset; mismatch shows up as a slight loss of contrast in near-black/white areas,
- * not as a colour error.
+ * not as a color error.
  *
  * **Sampling is part of the conversion** (see [convertIntoFrameData]): the converter walks a
  * regular grid, every `step`-th pixel in x and y, and only does the maths for those. A grid

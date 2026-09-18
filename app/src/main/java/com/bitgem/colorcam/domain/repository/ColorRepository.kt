@@ -4,7 +4,7 @@ import com.bitgem.colorcam.domain.model.ColorResult
 import kotlinx.coroutines.flow.Flow
 
 /**
- * The domain's view of "where colours come from".
+ * The domain's view of "where colors come from".
  *
  *  - [observeTopColors] — the live pipeline used by the camera screen. The implementation is
  *    fed frames by the camera analyser and pushes the newest result to every collector.

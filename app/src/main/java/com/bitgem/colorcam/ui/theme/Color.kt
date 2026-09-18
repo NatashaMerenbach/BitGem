@@ -2,7 +2,7 @@ package com.bitgem.colorcam.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-/** Neutral chrome so that the analysed colours are the only saturated thing on screen. */
+/** Neutral chrome so that the analysed colors are the only saturated thing on screen. */
 val DarkBackground = Color(0xFF101114)
 val DarkSurface = Color(0xFF1A1C20)
 val DarkSurfaceVariant = Color(0xFF26282E)

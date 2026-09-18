@@ -78,7 +78,7 @@ class ImageFrameMapperTest {
         assertEquals(12 * 4, frame.y.limit())
     }
 
-    /** End-to-end across the boundary: mocked ImageProxy in, real colours out. */
+    /** End-to-end across the boundary: mocked ImageProxy in, real colors out. */
     @Test
     fun `a mocked red frame converts to red`() {
         val image = redYuvImage(width = 8, height = 4)

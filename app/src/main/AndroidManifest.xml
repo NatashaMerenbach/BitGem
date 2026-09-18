@@ -25,7 +25,7 @@
 
           configChanges keeps the Activity alive across those changes: Compose re-measures itself for
           the new window size, while the CameraX binding, the ViewModel and the smoother's history
-          survive, so rotating does not restart the camera or reset the colour panel.
+          survive, so rotating does not restart the camera or reset the color panel.
         -->
         <activity
             android:name=".MainActivity"

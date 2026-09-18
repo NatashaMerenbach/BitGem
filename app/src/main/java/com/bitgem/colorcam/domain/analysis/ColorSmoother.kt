@@ -9,17 +9,17 @@ import com.bitgem.colorcam.domain.model.RgbColor
  * A pure per-frame analyser re-derives everything from scratch, so sensor noise and the
  * camera's auto-exposure hunting make the numbers (and occasionally the ordering) twitch by
  * several points every frame. This class turns the sequence of independent per-frame results
- * into a stable signal by matching each colour of the new frame to the closest colour of the
- * previous one and applying an exponential moving average to both the colour and the
+ * into a stable signal by matching each color of the new frame to the closest color of the
+ * previous one and applying an exponential moving average to both the color and the
  * percentage.
  *
  * `alpha = 1` disables smoothing (pass the frame straight through).
  *
  * Alternatives considered and rejected:
  *  - *Median over a rolling window of N frames*: better spike rejection, but needs a
- *    per-colour history and can lag by up to N frames (visible "sticky" percentages).
- *  - *Keeping unmatched previous colours alive for N frames with a decay*: removes the
- *    flicker of a colour that oscillates in and out of the top 5, but produces ghost cards
+ *    per-color history and can lag by up to N frames (visible "sticky" percentages).
+ *  - *Keeping unmatched previous colors alive for N frames with a decay*: removes the
+ *    flicker of a color that oscillates in and out of the top 5, but produces ghost cards
  *    that no longer exist in the scene, which is worse than a slightly jumpy list.
  *
  * Stateful by design; confine to one thread.

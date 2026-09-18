@@ -26,7 +26,7 @@ import org.junit.Rule
 import org.junit.Test
 
 /**
- * The ViewModel is orchestration only, so its test is about *state wiring*, not colour
+ * The ViewModel is orchestration only, so its test is about *state wiring*, not color
  * science: does the UI state follow the repository, the permission and the error channel?
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -95,7 +95,7 @@ class CameraViewModelTest {
     }
 
     @Test
-    fun `colours from the repository reach the state`() = runTest {
+    fun `colors from the repository reach the state`() = runTest {
         observeUiState()
         val expected = listOf(
             ColorResult(RgbColor(220, 30, 20), 60f),

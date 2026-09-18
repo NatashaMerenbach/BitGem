@@ -1,11 +1,11 @@
 # Color Breakdown (BitGem)
 
 An Android app that shows a live CameraX preview next to a continuously updating panel with the
-**five most common colours in the current frame** — each with the percentage of pixels it covers
-and its RGB values. Each card is painted in the colour it describes, and the text on it flips
+**five most common colors in the current frame** — each with the percentage of pixels it covers
+and its RGB values. Each card is painted in the color it describes, and the text on it flips
 between black and white automatically to keep enough contrast.
 
-The colour analysis is **hand-written** — binning + weighted k-means, no OpenCV, no ML Kit, no
+The color analysis is **hand-written** — binning + weighted k-means, no OpenCV, no ML Kit, no
 Palette API, no `ScriptIntrinsicYuvToRGB`, no built-in quantisation. The only libraries involved are
 CameraX (camera plumbing), Compose (UI), Hilt (DI) and coroutines.
 
@@ -22,7 +22,7 @@ CameraX (camera plumbing), Compose (UI), Hilt (DI) and coroutines.
 │        (fills the        │ צבעים    │     "Color Breakdown" otherwise)
 │         whole screen)    │ ┌──────┐ │
 │                          │ │ 8.24%│ │  ← rounded swatch filled with that row's
-│                          │ └──────┘ │     colour, percentage auto-contrasted
+│                          │ └──────┘ │     color, percentage auto-contrasted
 │                          │ R:116    │  ← RGB line below the swatch, in white
 │                          │ G:114    │
 │                          │ B:94     │
@@ -34,7 +34,7 @@ CameraX (camera plumbing), Compose (UI), Hilt (DI) and coroutines.
 
 Updates ~10x per second (throttled), smoothed across frames so the numbers do not twitch.
 
-Colours are reported with two decimals (`8.24%`) and as `R:116 G:114 B:94`, matching the reference
+colors are reported with two decimals (`8.24%`) and as `R:116 G:114 B:94`, matching the reference
 UI. The percentages are real shares of the sampled pixels, so they sum to 100 — the values in the
 mockup sum to ~20% and are illustrative only.
 
@@ -139,7 +139,7 @@ Google's recommended app architecture (UI → domain → data), as layered **pac
   │   │                    Preview: the AndroidView/PreviewView CameraX binding
   │   ├── viewmodel/       CameraViewModel (@HiltViewModel), ColorAnalysisUiState, CameraError
   │   ├── components/      ColorsPanel (+ ColorRow), ErrorMessage, CameraPermissionRequest
-  │   └── theme/           ColorCamTheme, colours, typography
+  │   └── theme/           ColorCamTheme, colors, typography
   ├── data/                Everything CameraX/ImageProxy specific + Hilt wiring
   │   ├── camera/          ImageToYuv420Frame (ImageProxy → domain Yuv420Frame)
   │   │                    ElapsedTimeSource
@@ -199,8 +199,8 @@ CameraX  ──ImageProxy(YUV_420_888)──▶  ColorRepositoryImpl.analyze()  
                                             │  FrameData = the packed sample grid (ARGB, reused)
                                             │  throttle: ≤1 analysis / 100 ms
                                             │  histogram → 32³ bins, epoch-stamped, reused
-                                            │  weighted k-means (k=8, fixed seed) over bins
-                                            │  merge colours within 24 RGB units
+                                            │  weighted k-means (k=6, fixed seed) over bins
+                                            │  merge colors within 24 RGB units
                                             │  ColorSmoother (EMA α=0.35)  → top 5
                                             ▼
                               MutableStateFlow<List<ColorResult>>   (conflated)
@@ -221,9 +221,9 @@ the samples into a coarse RGB histogram (5 bits per channel = 32 levels = 32 768
 keeps its population *and* the mean of the pixels that landed in it). Cluster the **non-empty
 bins** — not the pixels — with weighted k-means (Lloyd's algorithm, k-means++ seeding, fixed seed
 for reproducibility, empty clusters reseeded onto the worst-represented bin), then greedily merge
-clusters whose colours are within 24 RGB units of each other, and finally exponentiate-smooth the
+clusters whose colors are within 24 RGB units of each other, and finally exponentiate-smooth the
 result against the previous frame. Percentages are bin populations divided by the number of sampled
-pixels, so they are true occurrence rates of the sampled set. k is 8 rather than 5 so that merging
+pixels, so they are true occurrence rates of the sampled set. k is 6 rather than 5 so that merging
 cannot starve the panel.
 
 ---
@@ -251,7 +251,7 @@ BitGem/
 
 ## Design constraints honoured
 
-* **No ready-made image/colour library.** The YUV→RGB conversion, the histogram, the clustering and
+* **No ready-made image/color library.** The YUV→RGB conversion, the histogram, the clustering and
   the contrast calculation are all hand-written (`app/src/main/java/com/bitgem/colorcam/domain/analysis/`).
 * **No business logic in the ViewModel** — it combines flows into `ColorAnalysisUiState` and
   forwards permission/error events. No arithmetic, no pixel access.

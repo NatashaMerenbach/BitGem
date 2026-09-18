@@ -26,9 +26,10 @@ import kotlin.random.Random
  *  - **Empty clusters are recovered, not ignored.** A centroid that ends up owning no points
  *    is reseeded onto the worst-represented point. Skipping this is the classic bug that
  *    silently reduces `k` and produces two identical swatches.
- *  - **Merging after clustering.** k-means happily splits one dominant colour into two
- *    neighbours; merging by colour distance is what turns "8 clusters" into "5 colours a
- *    human would name", and its greedy weighted-mean merge keeps the percentages exact.
+ *  - **Merging after clustering.** k-means happily splits one dominant color into two
+ *    neighbours; merging by color distance is what turns "[AnalysisConfig.clusterCount] clusters"
+ *    into "[AnalysisConfig.topColorCount] colors a human would name", and its greedy
+ *    weighted-mean merge keeps the percentages exact.
  *  - **k > topN on purpose** ([AnalysisConfig.clusterCount] stays above
  *    [AnalysisConfig.topColorCount], which the config enforces) so that merging cannot starve
  *    the panel.
@@ -290,7 +291,7 @@ class ColorQuantizer(private val config: AnalysisConfig) {
 
     /**
      * Greedy agglomeration: walking the clusters from the heaviest down, absorb any cluster
-     * whose colour is within [AnalysisConfig.mergeDistance] of an already accepted one. The
+     * whose color is within [AnalysisConfig.mergeDistance] of an already accepted one. The
      * weighted-mean absorb keeps the total weight (and therefore the percentages) intact.
      */
     private fun merge(clusters: List<ClusterDraft>): List<ColorResult> {

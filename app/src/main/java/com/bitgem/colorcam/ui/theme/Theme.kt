@@ -45,7 +45,7 @@ private val ColorCamTypography = Typography(
 
 /**
  * The app is a camera app, so the dark scheme is always used — a bright UI next to a live
- * preview is unreadable, and keeping the chrome constant means the analysed colours are the
+ * preview is unreadable, and keeping the chrome constant means the analysed colors are the
  * only thing changing on screen.
  */
 @Composable

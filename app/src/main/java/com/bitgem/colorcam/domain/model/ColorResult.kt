@@ -1,7 +1,7 @@
 package com.bitgem.colorcam.domain.model
 
 /**
- * One entry of the colour breakdown: a colour plus the share of the analysed frame
+ * One entry of the color breakdown: a color plus the share of the analysed frame
  * it occupies, expressed as a percentage of the pixels that were sampled (0..100).
  */
 data class ColorResult(

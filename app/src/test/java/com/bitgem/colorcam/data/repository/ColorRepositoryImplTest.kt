@@ -108,7 +108,7 @@ class ColorRepositoryImplTest {
     )
 
     @Test
-    fun `analyzing a frame publishes the colour breakdown`() = runTest {
+    fun `analyzing a frame publishes the color breakdown`() = runTest {
         val image = halfRedHalfBlue()
 
         repository.analyze(image)
@@ -164,7 +164,7 @@ class ColorRepositoryImplTest {
         assertEquals(100f, colors[0].percentage, 0.5f)
     }
 
-    /** BT.601 white (Y=255, U=V=128) — one uniform colour, so a single 100% swatch. */
+    /** BT.601 white (Y=255, U=V=128) — one uniform color, so a single 100% swatch. */
     private fun whiteFrame(): ImageProxy = yuvImage(
         width = 8,
         height = 8,
@@ -224,7 +224,7 @@ class ColorRepositoryImplTest {
     }
 
     @Test
-    fun `the colour flow starts empty and reflects the latest frame`() = runTest {
+    fun `the color flow starts empty and reflects the latest frame`() = runTest {
         assertEquals(emptyList<Any>(), repository.observeTopColors().first())
 
         repository.analyze(halfRedHalfBlue())

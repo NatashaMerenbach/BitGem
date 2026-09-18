@@ -1,6 +1,6 @@
 // Single-module app. The layers live as packages under app/src/main/java/com/bitgem/colorcam/:
 //
-//   domain/   pure Kotlin — models, use cases and the whole colour pipeline (no Android imports)
+//   domain/   pure Kotlin — models, use cases and the whole color pipeline (no Android imports)
 //   data/     CameraX analyser (ImageProxy → domain frames), repository implementation, Hilt wiring
 //   ui/       Compose screens, ViewModel, theme
 //

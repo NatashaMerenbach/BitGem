@@ -6,11 +6,11 @@ import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
 /**
- * The colours of whatever the camera is currently looking at — what the camera screen's
+ * The colors of whatever the camera is currently looking at — what the camera screen's
  * ViewModel collects.
  *
  * There is deliberately no `limit` parameter: the pipeline caps its own output at
- * [com.bitgem.colorcam.domain.analysis.AnalysisConfig.topColorCount], so the number of colours
+ * [com.bitgem.colorcam.domain.analysis.AnalysisConfig.topColorCount], so the number of colors
  * lives in exactly one place and cannot drift between the algorithm and the UI.
  */
 class ObserveTopColorsUseCase @Inject constructor(

@@ -24,7 +24,7 @@ class ObserveTopColorsUseCaseTest {
     }
 
     @Test
-    fun `forwards the repository colours unchanged`() = runTest {
+    fun `forwards the repository colors unchanged`() = runTest {
         `when`(repository.observeTopColors()).thenReturn(flowOf(colors))
 
         val emitted = mutableListOf<List<ColorResult>>()

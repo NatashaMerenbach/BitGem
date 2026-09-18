@@ -80,7 +80,7 @@ fun CameraPreview(
                                 .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
                                 .setResolutionStrategy(
                                     ResolutionStrategy(
-                                        // 640x480 is plenty for a colour histogram and keeps the
+                                        // 640x480 is plenty for a color histogram and keeps the
                                         // conversion + clustering cost per frame tiny.
                                         Size(ANALYSIS_WIDTH, ANALYSIS_HEIGHT),
                                         ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER,

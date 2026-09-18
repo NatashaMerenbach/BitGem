@@ -67,7 +67,7 @@ class Yuv420ConverterTest {
     /**
      * The classic bug: treating a padded Y plane as if `rowStride == width`. With a stride
      * of width + 4 the naive implementation reads four bytes into the next row per row,
-     * which shifts the image diagonally and mixes colours.
+     * which shifts the image diagonally and mixes colors.
      */
     @Test
     fun `row padding is honoured`() {

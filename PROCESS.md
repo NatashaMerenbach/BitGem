@@ -9,15 +9,15 @@ that produced it.
 ## 1. Scope and shape
 
 An Android app (Compose + CameraX + Hilt) that shows a live camera preview with an opaque black
-panel overlaid on its trailing edge, listing the five most common colours in the current frame:
-each as a swatch filled with that colour holding the percentage, with `R:116 G:114 B:94` below it.
-The colour analysis — YUV decoding, binning, clustering, percentages, contrast selection — is
+panel overlaid on its trailing edge, listing the five most common colors in the current frame:
+each as a swatch filled with that color holding the percentage, with `R:116 G:114 B:94` below it.
+The color analysis — YUV decoding, binning, clustering, percentages, contrast selection — is
 hand-written. No OpenCV, no ML Kit, no Palette API, no `ScriptIntrinsicYuvToRGB`, no library
 quantisation.
 
 ```
 :app  (com.bitgem.colorcam)
-  ├── domain/   Pure Kotlin: models, use cases, the whole colour pipeline
+  ├── domain/   Pure Kotlin: models, use cases, the whole color pipeline
   ├── data/     CameraX analyser, ImageProxy → domain mapping, Hilt wiring
   └── ui/       Compose screens, ViewModel, theme
 ```
@@ -227,8 +227,8 @@ a flat scan. `Yuv420Converter.sampledPixelCount` is the single place that decide
 
 k-means over ~19 200 *pixels* needs 19 200 × k distance computations per iteration. k-means over the
 ~300–2 000 *non-empty bins* needs a fraction of that and gives the same answer, because each bin
-carries its population as a **weight** and its **mean colour** as its point — using the mean rather
-than the bin centre means the coarse binning does not shift the resulting colours at all.
+carries its population as a **weight** and its **mean color** as its point — using the mean rather
+than the bin centre means the coarse binning does not shift the resulting colors at all.
 
 Layout: 5 bits/channel → 32 levels → 32 768 bins → ~1.2 MB of permanently-allocated scratch.
 2 bits is visibly banded, 6 bits mostly wastes memory on empty bins.
@@ -236,10 +236,10 @@ Layout: 5 bits/channel → 32 levels → 32 768 bins → ~1.2 MB of permanently-
 *Alternatives considered:*
 - **Median cut / octree quantisation** — cheaper and a classic, but produces "boxes", not means, and
   makes percentage-preserving merging awkward.
-- **Mean shift** — better at finding natural colour modes, and between 3 and 10× slower at this k.
+- **Mean shift** — better at finding natural color modes, and between 3 and 10× slower at this k.
 - **Fixed uniform bins only (no clustering)** — this is what the naive version does, and it fails
-  the actual requirement: a photo's colours straddle bin boundaries, so the "top 5 bins" are five
-  near-identical shades of the same colour instead of five *colours*.
+  the actual requirement: a photo's colors straddle bin boundaries, so the "top 5 bins" are five
+  near-identical shades of the same color instead of five *colors*.
 - **Clustering in linear light or in Lab** — see §6; staying in gamma-encoded sRGB keeps the hot
   loop to three multiplies and no transform tables.
 
@@ -247,7 +247,7 @@ Layout: 5 bits/channel → 32 levels → 32 768 bins → ~1.2 MB of permanently-
 
 k-means++ seeding with a fixed `Random(config.seed)`, points visited in deterministic histogram
 order, and a stable sort by weight. Consequences: the same frame always produces the same five
-colours, the tests can assert exact values, and the on-screen ordering does not randomly reshuffle
+colors, the tests can assert exact values, and the on-screen ordering does not randomly reshuffle
 between identical frames. The price is that the seeding is not "fresh" per app run, which would
 matter only if the app were trying to escape a bad local optimum by re-rolling — it is not.
 
@@ -267,32 +267,32 @@ effective k silently shrinks — which shows up downstream as two identical swat
 }
 ```
 
-### 3.6 k = 8 for a 5-slot panel, and a merge step
+### 3.6 k = 6 for a 5-slot panel, and a merge step
 
 Two deliberate mismatches between the algorithm's `k` and the panel's five rows:
 
 - `k > topN` gives headroom: because merging can collapse clusters, `k = 5` would frequently leave
-  the panel showing three or four colours. `k = 8` costs almost nothing (k-means work scales with
+  the panel showing three or four colors. `k = 6` costs almost nothing (k-means work scales with
   the number of *bins*, not with k).
-- **Merging** is what turns "8 clusters" into "5 colours a human would name". k-means happily splits
-  one dominant colour into two neighbours; the greedy weighted-mean merge (`mergeDistance = 24` RGB
+- **Merging** is what turns "6 clusters" into "5 colors a human would name". k-means happily splits
+  one dominant color into two neighbours; the greedy weighted-mean merge (`mergeDistance = 24` RGB
   units) rejoins them while keeping the weight — and therefore the percentages — exact.
 
-`24` is a judgement call: it is roughly where two swatches stop looking like the same colour when
+`24` is a judgement call: it is roughly where two swatches stop looking like the same color when
 placed side by side. It is exposed in `AnalysisConfig` for exactly this reason.
 
 ### 3.7 Temporal smoothing, because a per-frame analyser is a jitter machine
 
 Each frame is analysed independently, so sensor noise and auto-exposure hunting move the numbers by
 several points every frame — and occasionally swap the card order. `ColorSmoother` matches each new
-colour to the closest previous colour (within `matchDistance`) and applies an EMA to both the colour
+color to the closest previous color (within `matchDistance`) and applies an EMA to both the color
 and the percentage, then re-normalises to 100%.
 
 *Alternatives considered:*
-- **Rolling median over N frames** — better spike rejection, but needs a per-colour history and lags
+- **Rolling median over N frames** — better spike rejection, but needs a per-color history and lags
   by up to N frames (visible "sticky" percentages).
-- **Keeping unmatched colours alive for N frames with a decay** — removes the flicker of a colour
-  oscillating in and out of the top 5, but produces *ghost cards* for colours that have left the
+- **Keeping unmatched colors alive for N frames with a decay** — removes the flicker of a color
+  oscillating in and out of the top 5, but produces *ghost cards* for colors that have left the
   scene, which is worse than a slightly jumpy list.
 
 ### 3.8 Threading and back-pressure
@@ -335,7 +335,7 @@ fun contrastingTextColor(): RgbColor =
     if (contrastRatioWith(White) > contrastRatioWith(Black)) White else Black
 ```
 
-It is a pure function of the colour, so it is unit-tested for a set of swatches including the
+It is a pure function of the color, so it is unit-tested for a set of swatches including the
 awkward mid-tones, and it reproduces the reference UI's behaviour (white text on the olive/grey
 swatches, dark text on the near-white `235,236,230` one).
 
@@ -367,7 +367,7 @@ try {
 `ColorRepositoryImplTest` asserts `verify(image).close()` on the success path, the throttled path
 and the failure path.
 
-### 4.2 Strides: the bug that produces a skewed, colour-shifted image
+### 4.2 Strides: the bug that produces a skewed, color-shifted image
 
 Camera planes are padded (`rowStride > width`, frequently 128-byte aligned), and chroma comes in two
 layouts: planar (`uvPixelStride = 1`, I420) and semi-planar (`uvPixelStride = 2`, NV12/NV21). Reading
@@ -382,7 +382,7 @@ Three tests pin this down: a padded `rowStride = width + 4` frame, an interleave
 frame, and a truncated plane (which must degrade to neutral chroma instead of throwing mid-frame —
 some vendor HALs hand out buffers a few bytes shorter than the stride arithmetic implies).
 
-### 4.3 Colour space: full-range BT.601, documented rather than assumed
+### 4.3 color space: full-range BT.601, documented rather than assumed
 
 `R = Y + 1.402·V′`, `G = Y − 0.344136·U′ − 0.714136·V′`, `B = Y + 1.772·U′` with `U′ = U − 128`.
 This assumes full-range video levels, which is what Android camera devices emit for YUV_420_888.
@@ -455,13 +455,13 @@ Everything below is the output of a real run in this repository, not an expectat
 
 `./gradlew testDebugUnitTest` → **58 tests, 0 failures** (32 in `domain/analysis`, 9 in
 `domain/model`, 2 in `domain/usecases`, 9 in `data/camera`, 6 in `data/repository`), no device and no
-Robolectric; the colour pipeline itself (the 43 domain tests) runs in about a second.
+Robolectric; the color pipeline itself (the 43 domain tests) runs in about a second.
 `./gradlew check` adds Android Lint (0 errors) and the layer-boundary check below.
 
-**Known-colour fixtures.** The converter is checked against the BT.601 reference vectors rather than
+**Known-color fixtures.** The converter is checked against the BT.601 reference vectors rather than
 against itself:
 
-| colour | Y | U | V | expected | asserted |
+| color | Y | U | V | expected | asserted |
 |---|---|---|---|---|---|
 | red | 76 | 84 | 255 | (254, 0, 0) | `r ≥ 250, g ≤ 3, b ≤ 3` |
 | green | 150 | 44 | 21 | (0, 255, 1) | `g ≥ 250, r ≤ 3, b ≤ 5` |
@@ -469,12 +469,12 @@ against itself:
 | white | 255 | 128 | 128 | (255, 255, 255) | exact, every pixel |
 | black | 0 | 128 | 128 | (0, 0, 0) | exact |
 
-**Known-composition images.** Synthetic frames with a known colour layout, sampled so the
+**Known-composition images.** Synthetic frames with a known color layout, sampled so the
 composition is exact — 24 red / 12 green / 4 blue rows of 40, sampled on a step of 2, gives exactly
 240 / 120 / 40 samples:
 
 ```
-known 60-30-10 image yields those percentages and colours:
+known 60-30-10 image yields those percentages and colors:
   red   60.0% ± 1.5 → (220, 30, 20) ± 3
   green 30.0% ± 1.5 → (30, 200, 60) ± 3
   blue  10.0% ± 1.5 → (40, 60, 210) ± 3
@@ -482,20 +482,20 @@ known 60-30-10 image yields those percentages and colours:
 
 **Stability, not just accuracy.**
 - *Determinism*: the same frame quantised twice returns equal lists.
-- *Noise*: ±4 units of deterministic per-pixel noise keeps the dominant colour within 3 points of
-  60% and the colour within 6 units.
-- *Frame-to-frame*: two frames of the same scene with ~3-unit exposure drift keep the same colours in
-  the same order, with each colour moving < 12 RGB units.
+- *Noise*: ±4 units of deterministic per-pixel noise keeps the dominant color within 3 points of
+  60% and the color within 6 units.
+- *Frame-to-frame*: two frames of the same scene with ~3-unit exposure drift keep the same colors in
+  the same order, with each color moving < 12 RGB units.
 
-**Degenerate inputs.** Empty frame → no colours (not a crash, not a black swatch). Single-colour
+**Degenerate inputs.** Empty frame → no colors (not a crash, not a black swatch). Single-color
 frame → exactly one entry at 100%. A black frame → reported as black, because dropping it would be
-wrong. Two colours 11 units apart → merged into one. Six distinct colours with `topColorCount = 5` →
+wrong. Two colors 11 units apart → merged into one. Six distinct colors with `topColorCount = 5` →
 exactly five, the five heaviest.
 
 **The camera path without a camera.** `ImageProxy` and `PlaneProxy` are interfaces, so Mockito mocks
 them and the repository is driven end-to-end: a mocked half-red/half-blue frame produces a 50/50
 breakdown; a second frame inside the throttle window is dropped and still closed; a frame with no
-planes reports through the error channel instead of crashing the pipeline; and the colour flow is
+planes reports through the error channel instead of crashing the pipeline; and the color flow is
 verified to start empty and then reflect the latest frame.
 
 ### 5.2 The UI tests
@@ -529,7 +529,7 @@ test that is never run is documentation, not a test.
 
 ### 5.3 What is *not* verified
 
-The panel numbers have not been compared against a physical colour reference under controlled
+The panel numbers have not been compared against a physical color reference under controlled
 lighting, and no frame-rate/power measurements were taken. The 10/s throttle and the 1/16 sampling
 are reasoned from cost models (§3.2, §3.8), not measured on a device.
 
@@ -561,17 +561,17 @@ sampled pixels and therefore sum to 100.
 3. **Box-filter downscale instead of point sampling.** Averaging 4×4 blocks before clustering is
    better on noisy sensors than picking one pixel per block, at the cost of 16 reads per sample.
 4. **Adaptive k.** `k = 6` is a constant; a silhouette score or an elbow heuristic would let a
-   two-colour scene stop pretending it needs six clusters, and a busy scene stop merging distinct
-   colours.
+   two-color scene stop pretending it needs six clusters, and a busy scene stop merging distinct
+   colors.
 5. **Hysteresis for card ordering.** EMA smooths the numbers but adjacent cards can still swap
    places frame to frame. Holding a swap until the difference exceeds a margin (in percentage and in
-   colour distance) would remove the last visible jitter.
-6. **Colour names.** "38.24% · olive" is far more useful to a human than "38.24% · R:116 G:114 B:94",
-   and would be another hand-written table (nearest named colour in Lab).
+   color distance) would remove the last visible jitter.
+6. **color names.** "38.24% · olive" is far more useful to a human than "38.24% · R:116 G:114 B:94",
+   and would be another hand-written table (nearest named color in Lab).
 7. **A tap-to-freeze / copy-hex affordance**, and pinning a swatch to compare it against a new
    scene — the feature that turns this from a demo into a tool.
 8. **Region of interest.** Analyse only a centre crop or a tapped area, which is what you actually
-   want when colour-matching a fabric or a painted wall.
+   want when color-matching a fabric or a painted wall.
 9. **Measure it.** Macrobenchmark for jank, `dumpsys batterystats` for the drain of the 10/s
    pipeline, and a device matrix (a Samsung semi-planar NV21 device and a Pixel) for the stride
    paths that are currently covered only by synthetic frames.
@@ -623,7 +623,7 @@ Every one of these was caught by the compiler, by a failing test, or by the auth
 | 15 | A `WholePercentages` test whose inputs did not sum to 100, making the "spare points" expectation impossible | Test failed; the fixture was incoherent |
 | 16 | A patch that mangled the indentation of a preview function and left an extra brace | Compiler |
 
-Pattern worth naming: **the failures cluster in the seams, not in the algorithm.** The colour math,
+Pattern worth naming: **the failures cluster in the seams, not in the algorithm.** The color math,
 the stride handling and the k-means all worked as written; what broke was Kotlin overload
 resolution, JUnit's API surface, JUnit rule/dispatcher ordering, Gradle/AGP configuration, and my own
 test fixtures. That is the argument for running the compiler and the suite early and often rather

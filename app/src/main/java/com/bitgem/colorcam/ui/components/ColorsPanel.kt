@@ -35,13 +35,13 @@ import com.bitgem.colorcam.ui.theme.PanelTextColor
 /**
  * The breakdown panel: an opaque black overlay pinned to the trailing edge of the preview.
  *
- * Structure (from the reference UI): a heading, then one row per colour, sorted by percentage
+ * Structure (from the reference UI): a heading, then one row per color, sorted by percentage
  * descending — the ordering comes from the domain layer, this composable never sorts anything.
- * Each row is a rounded swatch filled with the colour itself holding the percentage, with the
+ * Each row is a rounded swatch filled with the color itself holding the percentage, with the
  * RGB values as a smaller line *below* the swatch, in white on the panel.
  *
  * Rows share the available height equally, so the panel looks identical whether the analyser
- * found five colours or two.
+ * found five colors or two.
  */
 @Composable
 fun ColorsPanel(
@@ -92,7 +92,7 @@ fun ColorsPanel(
     }
 }
 
-/** One swatch: the colour as a filled box holding the percentage, the RGB values underneath. */
+/** One swatch: the color as a filled box holding the percentage, the RGB values underneath. */
 @Composable
 fun ColorRow(
     colorResult: ColorResult,

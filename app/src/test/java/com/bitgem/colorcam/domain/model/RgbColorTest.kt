@@ -44,7 +44,7 @@ class RgbColorTest {
     }
 
     @Test
-    fun `the chosen text colour always has the higher contrast ratio`() {
+    fun `the chosen text color always has the higher contrast ratio`() {
         val swatches = listOf(
             RgbColor(242, 201, 76),
             RgbColor(18, 22, 30),
@@ -57,7 +57,7 @@ class RgbColorTest {
             val chosen = swatch.contrastingTextColor()
             val alternative = if (chosen == RgbColor.Black) RgbColor.White else RgbColor.Black
             assertTrue(
-                "for $swatch the chosen text colour was not the higher-contrast one",
+                "for $swatch the chosen text color was not the higher-contrast one",
                 swatch.contrastRatioWith(chosen) >= swatch.contrastRatioWith(alternative),
             )
         }

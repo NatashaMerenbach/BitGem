@@ -29,7 +29,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Compose UI tests for the colour panel and the permission gate.
+ * Compose UI tests for the color panel and the permission gate.
  *
  * Expected strings are read from resources rather than hard-coded, so the tests pass on any
  * locale (the panel heading is Hebrew on an `iw` device, English otherwise).
@@ -83,7 +83,7 @@ class ColorBreakdownPanelTest {
     }
 
     @Test
-    fun rendersFewerRowsWhenFewerColoursExist() {
+    fun rendersFewerRowsWhenFewerColorsExist() {
         composeRule.setContent {
             ColorCamTheme {
                 ColorsPanel(

@@ -8,8 +8,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Correctness of the clustering pipeline is verified with synthetic images whose colour
- * composition is known exactly (the "known-colour test images" of the write-up), so the
+ * Correctness of the clustering pipeline is verified with synthetic images whose color
+ * composition is known exactly (the "known-color test images" of the write-up), so the
  * percentages can be asserted numerically rather than eyeballed.
  */
 class ColorQuantizerTest {
@@ -29,7 +29,7 @@ class ColorQuantizerTest {
     private val purple = RgbColor(140, 40, 200)
     private val cyan = RgbColor(40, 200, 200)
 
-    /** Builds a frame made of horizontal bands: (rows, colour). */
+    /** Builds a frame made of horizontal bands: (rows, color). */
     private fun frameOf(width: Int, height: Int, bands: List<Pair<Int, RgbColor>>, noise: Int = 0): FrameData {
         val pixels = IntArray(width * height)
         var row = 0
@@ -59,7 +59,7 @@ class ColorQuantizerTest {
     }
 
     @Test
-    fun `known 60-30-10 image yields those percentages and colours`() {
+    fun `known 60-30-10 image yields those percentages and colors`() {
         // 40 rows: 24 red (60%), 12 green (30%), 4 blue (10%).
         val frame = frameOf(
             width = 40,
@@ -84,7 +84,7 @@ class ColorQuantizerTest {
 
         val results = quantizer.quantize(frame, config.topColorCount)
 
-        assertTrue("expected several colours but got $results", results.size >= 3)
+        assertTrue("expected several colors but got $results", results.size >= 3)
         val total = results.sumOf { it.percentage.toDouble() }
         assertEquals(100.0, total, 0.05)
         for (index in 1 until results.size) {
@@ -96,7 +96,7 @@ class ColorQuantizerTest {
     }
 
     @Test
-    fun `sensor noise does not change the dominant colour or its share`() {
+    fun `sensor noise does not change the dominant color or its share`() {
         val clean = frameOf(40, 40, listOf(24 to red, 12 to green, 4 to blue))
         val noisy = frameOf(40, 40, listOf(24 to red, 12 to green, 4 to blue), noise = 4)
 
@@ -121,9 +121,9 @@ class ColorQuantizerTest {
     }
 
     @Test
-    fun `frame to frame stability - a small scene change keeps the same colours in the same order`() {
+    fun `frame to frame stability - a small scene change keeps the same colors in the same order`() {
         val frameA = frameOf(40, 40, listOf(24 to red, 12 to green, 4 to blue))
-        // Same scene, slightly different exposure/lighting: every colour shifted by ~3 units.
+        // Same scene, slightly different exposure/lighting: every color shifted by ~3 units.
         val frameB = frameOf(40, 40, listOf(24 to red, 12 to green, 4 to blue), noise = 3)
 
         val resultsA = quantizer.quantize(frameA, config.topColorCount)
@@ -137,14 +137,14 @@ class ColorQuantizerTest {
         for (index in resultsA.indices) {
             val distance = ColorMath.distance(resultsA[index].rgb, resultsB[index].rgb)
             assertTrue(
-                "colour $index moved by $distance between frames; expected < 12 (${resultsA[index]} -> ${resultsB[index]})",
+                "color $index moved by $distance between frames; expected < 12 (${resultsA[index]} -> ${resultsB[index]})",
                 distance < 12.0,
             )
         }
     }
 
     @Test
-    fun `single colour frame reports 100 percent`() {
+    fun `single color frame reports 100 percent`() {
         val frame = frameOf(16, 16, listOf(16 to red))
 
         val results = quantizer.quantize(frame, config.topColorCount)
@@ -155,18 +155,18 @@ class ColorQuantizerTest {
     }
 
     @Test
-    fun `nearly identical colours are merged into one entry`() {
+    fun `nearly identical colors are merged into one entry`() {
         val frame = frameOf(20, 20, listOf(10 to RgbColor(200, 10, 10), 10 to RgbColor(210, 15, 8)))
 
         val results = quantizer.quantize(frame, config.topColorCount)
 
-        assertEquals("colours 11 units apart must merge, got $results", 1, results.size)
+        assertEquals("colors 11 units apart must merge, got $results", 1, results.size)
         assertEquals(100f, results[0].percentage, 0.01f)
     }
 
     @Test
     fun `the injected config, not a built-in default, decides what merges`() {
-        // The same frame the merge test uses: two colours ~11 units apart.
+        // The same frame the merge test uses: two colors ~11 units apart.
         val frame = frameOf(20, 20, listOf(10 to RgbColor(200, 10, 10), 10 to RgbColor(210, 15, 8)))
 
         val merging = ColorQuantizer(AnalysisConfig(mergeDistance = 24.0))
@@ -182,7 +182,7 @@ class ColorQuantizerTest {
     }
 
     @Test
-    fun `never returns more than the requested number of colours`() {
+    fun `never returns more than the requested number of colors`() {
         val frame = frameOf(
             width = 30,
             height = 60,
@@ -198,7 +198,7 @@ class ColorQuantizerTest {
     }
 
     @Test
-    fun `empty frame yields no colours`() {
+    fun `empty frame yields no colors`() {
         val empty = FrameData(0, 0, IntArray(0))
 
         assertTrue(quantizer.quantize(empty, config.topColorCount).isEmpty())

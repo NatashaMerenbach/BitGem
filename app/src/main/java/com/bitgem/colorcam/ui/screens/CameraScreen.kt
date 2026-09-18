@@ -34,7 +34,7 @@ import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
 /**
- * Identifies the colour panel for the instrumented tests, which assert where it sits in RTL.
+ * Identifies the color panel for the instrumented tests, which assert where it sits in RTL.
  * Public because `androidTest` is a separate compilation and cannot see `internal`.
  */
 const val COLORS_PANEL_TEST_TAG = "colors_panel"
@@ -42,7 +42,7 @@ const val COLORS_PANEL_TEST_TAG = "colors_panel"
 /**
  * The whole screen, as a pure function of [state].
  *
- * Layout (matching the reference UI): the camera preview fills the screen and the colour panel
+ * Layout (matching the reference UI): the camera preview fills the screen and the color panel
  * is an **opaque overlay** on the trailing edge — roughly the rightmost 30% — with a hard
  * vertical edge over the live image rather than sitting beside it in a row.
  *

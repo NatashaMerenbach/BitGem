@@ -9,7 +9,7 @@ import java.nio.ByteBuffer
  *
  * Strides are *not* optional detail: camera planes are very often padded
  * (`rowStride > width`, `uvPixelStride == 2`). Reading them as if they were tightly packed
- * is the classic source of skewed, colour-shifted output.
+ * is the classic source of skewed, color-shifted output.
  *
  * [y], [u] and [v] are absolute-indexed buffers whose index 0 is the first byte of the
  * plane.

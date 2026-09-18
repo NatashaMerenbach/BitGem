@@ -6,10 +6,10 @@ import java.nio.ByteBuffer
 /**
  * Builds YUV_420_888 test frames.
  *
- * The colour constants are the standard BT.601 test vectors (the same values a camera
+ * The color constants are the standard BT.601 test vectors (the same values a camera
  * produces for a saturated red/green/blue/white/black target under neutral illumination):
  *
- * | colour | Y  | U   | V   |
+ * | color | Y  | U   | V   |
  * |--------|----|-----|-----|
  * | red    | 76 | 84  | 255 |
  * | green  | 150| 44  | 21  |

@@ -27,16 +27,16 @@ class ColorSmootherTest {
         val smoother = ColorSmoother(alpha = 0.5f, matchDistance = 64.0)
         smoother.smooth(listOf(red))
 
-        // The same colour, but its share jumps from 60% to 100%.
+        // The same color, but its share jumps from 60% to 100%.
         val result = smoother.smooth(listOf(ColorResult(RgbColor(200, 20, 20), 100f)))
 
-        // 60 + 0.5 * (100 - 60) = 80, then re-normalised (only one colour => 100%).
+        // 60 + 0.5 * (100 - 60) = 80, then re-normalised (only one color => 100%).
         assertEquals(1, result.size)
         assertEquals(100f, result[0].percentage, 0.001f)
     }
 
     @Test
-    fun `matching colours are blended rather than replaced`() {
+    fun `matching colors are blended rather than replaced`() {
         // matchDistance must exceed the distance between the two greys: sqrt(3 * 40^2) = 69.3.
         val smoother = ColorSmoother(alpha = 0.5f, matchDistance = 80.0)
         smoother.smooth(listOf(ColorResult(RgbColor(100, 100, 100), 50f), green))
@@ -51,7 +51,7 @@ class ColorSmootherTest {
     }
 
     @Test
-    fun `a colour further away than matchDistance is adopted as-is`() {
+    fun `a color further away than matchDistance is adopted as-is`() {
         val smoother = ColorSmoother(alpha = 0.5f, matchDistance = 10.0)
         smoother.smooth(listOf(ColorResult(RgbColor(100, 100, 100), 50f), green))
 
@@ -61,7 +61,7 @@ class ColorSmootherTest {
     }
 
     @Test
-    fun `an unmatched colour is adopted immediately`() {
+    fun `an unmatched color is adopted immediately`() {
         val smoother = ColorSmoother(alpha = 0.35f, matchDistance = 10.0)
         smoother.smooth(listOf(red))
 

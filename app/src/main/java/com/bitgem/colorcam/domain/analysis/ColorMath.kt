@@ -4,7 +4,7 @@ import com.bitgem.colorcam.domain.model.RgbColor
 import kotlin.math.sqrt
 
 /**
- * Colour-space helpers used by the clustering pipeline. All of them are pure functions,
+ * color-space helpers used by the clustering pipeline. All of them are pure functions,
  * which is what makes the algorithm testable in isolation.
  *
  * Distance is plain Euclidean distance in (gamma-encoded) sRGB. That is *not* perceptually
