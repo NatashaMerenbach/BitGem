@@ -11,8 +11,10 @@ import kotlin.random.Random
  * Weighted k-means (Lloyd's algorithm) with a k-means++ seeding pass, run over an
  * [RgbHistogram] of the sampled pixels instead of over the pixels themselves.
  *
- * Pipeline: **sample → bin → k-means over non-empty bins → merge near-identical
- * clusters → sort → top N**.
+ * Pipeline: **convert + sample → bin → k-means over non-empty bins → merge near-identical
+ * clusters → sort → top N**. The sampling happens in `Yuv420Converter` (it decimates while
+ * converting, so the YUV maths only runs on the pixels that get binned), which is why the frame
+ * handed to [quantize] is already the sample grid and there is no sampling pass here.
  *
  * Design notes that matter:
  *  - **No ready-made library.** Everything here is hand-rolled: the binning, the seeding,
@@ -27,51 +29,58 @@ import kotlin.random.Random
  *  - **Merging after clustering.** k-means happily splits one dominant colour into two
  *    neighbours; merging by colour distance is what turns "8 clusters" into "5 colours a
  *    human would name", and its greedy weighted-mean merge keeps the percentages exact.
- *  - **k > topN on purpose** ([AnalysisConfig.clusterCount] = 8 for 5 displayed colours) so
- *    that merging cannot starve the panel.
+ *  - **k > topN on purpose** ([AnalysisConfig.clusterCount] stays above
+ *    [AnalysisConfig.topColorCount], which the config enforces) so that merging cannot starve
+ *    the panel.
  *
  * Scratch arrays are allocated once and reused (see PROCESS.md on allocation); the instance
  * must therefore be confined to a single thread by its owner.
+ *
+ * [config] has no default value on purpose. When it did, `ColorQuantizer()` compiled happily
+ * and quietly built its own [AnalysisConfig], so changing the config the app injects
+ * (`AnalysisModule.provideAnalysisConfig`) retuned the repository and the smoother but never
+ * the clustering — a silent second source of truth. Now a construction site has to say which
+ * config it means.
  */
-class ColorQuantizer() {
-    private val config: AnalysisConfig = AnalysisConfig()
-    private val sampler: PixelSampler = PixelSampler()
+class ColorQuantizer(private val config: AnalysisConfig) {
     private val histogram = RgbHistogram(config.bitsPerChannel)
 
     // Points = populated histogram bins, in ARGB-independent arrays (no boxing, no allocation).
-    private val pointR = DoubleArray(config.binCount)
-    private val pointG = DoubleArray(config.binCount)
-    private val pointB = DoubleArray(config.binCount)
-    private val pointW = IntArray(config.binCount)
+    // These are indexed by *point* (0 until pointCount), not by bin index: a frame populates a few
+    // hundred to ~2,000 bins, while binCount is 32,768. Sizing them to binCount would keep ~1 MB of
+    // resident heap for indices that are never read; instead they grow on demand and are then
+    // reused for every subsequent frame.
+    private var pointR = DoubleArray(0)
+    private var pointG = DoubleArray(0)
+    private var pointB = DoubleArray(0)
+    private var pointW = IntArray(0)
 
     private val centroidR = DoubleArray(config.clusterCount)
     private val centroidG = DoubleArray(config.clusterCount)
     private val centroidB = DoubleArray(config.clusterCount)
 
-    private val assignment = IntArray(config.binCount)
+    // Also point-indexed (it holds one cluster assignment per point), and reused between the
+    // seeding pass and Lloyd's iterations.
+    private var assignment = IntArray(0)
+
+    /** Scratch for the k-means++ seeding pass, sized with the points. */
+    private var minDistanceSquared = DoubleArray(0)
+
     private val clusterWeight = DoubleArray(config.clusterCount)
     private val clusterSumR = DoubleArray(config.clusterCount)
     private val clusterSumG = DoubleArray(config.clusterCount)
     private val clusterSumB = DoubleArray(config.clusterCount)
-    private var sampleBuffer = IntArray(0)
 
     fun quantize(frame: FrameData, topColorCount: Int): List<ColorResult> {
         if (frame.isEmpty) return emptyList()
 
-        val step = config.samplingStep
-        val required = sampler.sampleCount(frame.width, frame.height, step)
-        if (required == 0) return emptyList()
-        // Grow on demand rather than reallocating: a 640x480 frame needs 19200 samples (~77 KB)
-        // and we analyse ~10 frames per second, so a fresh array per frame is pure garbage.
-        // Keeping a buffer larger than `required` is fine — sampleInto returns how many values
-        // it wrote, and only that prefix is read below.
-        if (sampleBuffer.size < required) sampleBuffer = IntArray(required)
-        val sampleCount = sampler.sampleInto(frame, step, sampleBuffer)
-        if (sampleCount == 0) return emptyList()
-
+        // No sampling pass here: the frame *is* the sampled grid, because Yuv420Converter
+        // decimates while converting (that ordering is what keeps the YUV maths off the 15/16 of
+        // pixels nobody looks at). Every pixel in the buffer is a sample.
         histogram.begin()
-        for (i in 0 until sampleCount) {
-            histogram.add(sampleBuffer[i])
+        val pixels = frame.pixels
+        for (i in 0 until frame.pixelCount) {
+            histogram.add(pixels[i])
         }
 
         val pointCount = loadPoints()
@@ -90,6 +99,7 @@ class ColorQuantizer() {
     /** Copies the populated bins into the flat point arrays. */
     private fun loadPoints(): Int {
         val populated = histogram.populatedBinCount
+        ensurePointCapacity(populated)
         for (i in 0 until populated) {
             val bin = histogram.binAt(i)
             pointR[i] = histogram.meanR(bin)
@@ -98,6 +108,24 @@ class ColorQuantizer() {
             pointW[i] = histogram.weightOf(bin)
         }
         return populated
+    }
+
+    /**
+     * Grows the point-indexed scratch to hold [required] populated bins.
+     *
+     * Doubling rather than exact sizing, so a scene that gets busier frame by frame does not
+     * reallocate every frame; the arrays are never shrunk, because the capacity a previous frame
+     * needed is a good estimate of what the next one needs.
+     */
+    private fun ensurePointCapacity(required: Int) {
+        if (pointR.size >= required) return
+        val capacity = maxOf(required, pointR.size * 2)
+        pointR = DoubleArray(capacity)
+        pointG = DoubleArray(capacity)
+        pointB = DoubleArray(capacity)
+        pointW = IntArray(capacity)
+        assignment = IntArray(capacity)
+        minDistanceSquared = DoubleArray(capacity)
     }
 
     /**
@@ -120,7 +148,7 @@ class ColorQuantizer() {
         centroidG[0] = pointG[mostPopulous]
         centroidB[0] = pointB[mostPopulous]
 
-        val minDistanceSquared = DoubleArray(pointCount)
+        // Reused scratch, not a fresh array: this runs on every analysed frame.
         for (i in 0 until pointCount) {
             minDistanceSquared[i] = distanceSquared(i, centroidR[0], centroidG[0], centroidB[0])
         }

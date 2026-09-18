@@ -4,8 +4,9 @@
   so the strings come from resources rather than being hard-coded — the same panel reads
   "Color Breakdown" on an English device and "חלוקת צבעים" here.
 
-  Note: layout stays end-aligned in both directions, so on an RTL locale the panel moves to the
-  left edge of the preview.
+  Note: the panel itself stays on the *physical* right edge in both directions (matching the
+  reference UI, which shows a Hebrew heading with the panel on the right) — `CameraScreen` lays the
+  preview overlay out LTR on purpose. Only the strings here are localised.
 -->
 <resources>
     <string name="app_name">חלוקת צבעים</string>
@@ -13,6 +14,9 @@
     <string name="permission_title">נדרשת הרשאה למצלמה</string>
     <string name="permission_rationale">האפליקציה מנתחת את תמונת המצלמה בזמן אמת כדי להציג את חמשת הצבעים הנפוצים בפריים. שום דבר לא יוצא מהמכשיר — הפריימים לא נשמרים ולא נשלחים לשום מקום.</string>
     <string name="permission_grant">אישור גישה למצלמה</string>
+    <string name="permission_blocked_title">הגישה למצלמה חסומה</string>
+    <string name="permission_blocked_rationale">אנדרואיד לא יבקש שוב את ההרשאה הזו. פתחו את ההגדרות ואפשרו גישה למצלמה כדי להמשיך.</string>
+    <string name="permission_open_settings">פתחו הגדרות</string>
 
     <string name="color_breakdown_title">חלוקת צבעים</string>
     <string name="color_card_percentage">%1$.2f%%</string>

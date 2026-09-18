@@ -20,7 +20,7 @@ data class AnalysisConfig(
      * by the number of *bins*, and 16x fewer pixels is 16x less binning work with a
      * percentage error that is far below the perceptible threshold.
      */
-    val samplingStep: Int = 1,
+    val samplingStep: Int = 4,
 
     /**
      * k of k-means. Deliberately larger than the number of displayed colors: the merge

@@ -1,6 +1,5 @@
 package com.bitgem.colorcam.ui.camera
 
-import androidx.camera.core.ImageAnalysis
 import com.bitgem.colorcam.MainDispatcherRule
 import com.bitgem.colorcam.domain.model.ColorResult
 import com.bitgem.colorcam.domain.model.RgbColor
@@ -10,8 +9,6 @@ import com.bitgem.colorcam.domain.usecases.ObserveTopColorsUseCase
 import com.bitgem.colorcam.ui.viewmodel.CameraError
 import com.bitgem.colorcam.ui.viewmodel.CameraPermissionState
 import com.bitgem.colorcam.ui.viewmodel.CameraViewModel
-import java.util.concurrent.Executor
-import java.util.concurrent.Executors
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -41,7 +38,6 @@ class CameraViewModelTest {
     private val colors = MutableStateFlow<List<ColorResult>>(emptyList())
     private val analysisErrors = MutableSharedFlow<Throwable>()
     private val repository = FakeRepository(colors, analysisErrors)
-    private val analysisExecutor: Executor = Executors.newSingleThreadExecutor()
 
     /**
      * Built in `@Before`, not as a field initialiser: the ViewModel's `init` block launches on
@@ -55,8 +51,6 @@ class CameraViewModelTest {
         viewModel = CameraViewModel(
             observeTopColors = ObserveTopColorsUseCase(repository),
             observeErrorsUseCase = ObserveErrorsUseCase(repository),
-            analyzer = ImageAnalysis.Analyzer { },
-            analysisExecutor = analysisExecutor,
         )
     }
 

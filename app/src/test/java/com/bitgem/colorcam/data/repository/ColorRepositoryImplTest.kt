@@ -1,5 +1,6 @@
 package com.bitgem.colorcam.data.repository
 
+import android.util.Log
 import androidx.camera.core.ImageInfo
 import androidx.camera.core.ImageProxy
 import com.bitgem.colorcam.data.camera.ElapsedTimeSource
@@ -17,8 +18,12 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito.`when`
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.mockStatic
+import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 
 /**
@@ -27,15 +32,17 @@ import org.mockito.Mockito.verify
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ColorRepositoryImplTest {
 
+    /** One instance for the whole pipeline, exactly as the DI graph wires it. */
+    private val config = AnalysisConfig()
 
     private var now = 1_000L
 
     private val repository = ColorRepositoryImpl(
         imageToYuv420Frame = ImageToYuv420Frame(),
         yuv420Converter = Yuv420Converter(),
-        colorQuantizer = ColorQuantizer(),
+        colorQuantizer = ColorQuantizer(config),
         colorSmoother = ColorSmoother(alpha = 1f),
-        analysisConfig = AnalysisConfig(),
+        analysisConfig = config,
         elapsedTime = ElapsedTimeSource { now },
     )
 
@@ -146,7 +153,7 @@ class ColorRepositoryImplTest {
     @Test
     fun `frames after the throttle window are analysed again`() = runTest {
         repository.analyze(halfRedHalfBlue())
-        now += AnalysisConfig().minFrameIntervalMillis + 1
+        now += config.minFrameIntervalMillis + 1
 
         repository.analyze(whiteFrame())
 
@@ -181,6 +188,39 @@ class ColorRepositoryImplTest {
 
         assertEquals(1, errors.size)
         verify(brokenImage).close()
+    }
+
+    @Test
+    fun `failures reach logcat once per burst, so a broken frame cannot bury its own trace`() = runTest {
+        mockStatic(Log::class.java).use { log ->
+            // Two frames that throw. A stride bug does this on every frame, and logging all of
+            // them at ~10 analyses/s would drown the trace it is meant to preserve — so the first
+            // failure of a burst is the one that gets the geometry and the stack trace.
+            repository.analyze(brokenFrame())
+            advanceClock()
+            repository.analyze(brokenFrame())
+            log.verify({ Log.e(anyString(), anyString(), any()) }, times(1))
+
+            // A frame that gets through re-arms it: the next failure is a new problem.
+            advanceClock()
+            repository.analyze(halfRedHalfBlue())
+            advanceClock()
+            repository.analyze(brokenFrame())
+            log.verify({ Log.e(anyString(), anyString(), any()) }, times(2))
+        }
+    }
+
+    /**
+     * A frame whose plane array is empty: the mapper cannot build a `Yuv420Frame` from it, which
+     * is the shape a malformed/unexpected-buffer frame takes.
+     */
+    private fun brokenFrame(): ImageProxy = mock(ImageProxy::class.java).apply {
+        `when`(format).thenReturn(35)
+        `when`(planes).thenReturn(emptyArray())
+    }
+
+    private fun advanceClock() {
+        now += config.minFrameIntervalMillis + 1
     }
 
     @Test

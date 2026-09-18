@@ -1,9 +1,7 @@
 package com.bitgem.colorcam.ui.viewmodel
 
-import androidx.camera.core.ImageAnalysis
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.bitgem.colorcam.data.di.AnalysisExecutor
 import com.bitgem.colorcam.domain.model.ColorResult
 import com.bitgem.colorcam.domain.usecases.ObserveErrorsUseCase
 import com.bitgem.colorcam.domain.usecases.ObserveTopColorsUseCase
@@ -14,7 +12,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.concurrent.Executor
 import javax.inject.Inject
 
 /**
@@ -60,16 +57,18 @@ sealed interface CameraError {
 }
 
 /**
- * Orchestration only: it wires the repository's flows to the UI state and exposes the two
- * camera-pipeline objects the composable needs to bind CameraX. No pixel math, no clustering,
- * no percentages — all of that lives behind [ObserveTopColorsUseCase].
+ * Orchestration only: it wires the repository's flows to the UI state. No pixel math, no
+ * clustering, no percentages — all of that lives behind [ObserveTopColorsUseCase].
+ *
+ * Note what is *not* here: no `ImageAnalysis.Analyzer` and no `Executor`. The preview needs both
+ * to bind CameraX, but they are read from the Hilt graph by [com.bitgem.colorcam.ui.screens.CameraRoute]
+ * (`CameraAnalysisEntryPoint`) instead of being couriered through this class, so the ViewModel's
+ * public surface is exactly "UI state plus callbacks" and it names no framework type.
  */
 @HiltViewModel
 class CameraViewModel @Inject constructor(
     observeTopColors: ObserveTopColorsUseCase,
-    val observeErrorsUseCase: ObserveErrorsUseCase,
-    val analyzer: ImageAnalysis.Analyzer,
-    @AnalysisExecutor val analysisExecutor: Executor,
+    private val observeErrorsUseCase: ObserveErrorsUseCase,
 ) : ViewModel() {
 
     private val cameraPermission = MutableStateFlow(CameraPermissionState.Requestable)
@@ -110,9 +109,6 @@ class CameraViewModel @Inject constructor(
 
     fun onCameraError(error: Throwable) {
         cameraError.value = CameraError.CameraUnavailable
-        viewModelScope.launch {//NM - was fixed here, but I think we should still log the error for debugging purposes
-            observeErrorsUseCase().collect { cameraError.value = CameraError.CameraUnavailable }
-        }
     }
 
     fun onDismissError() {

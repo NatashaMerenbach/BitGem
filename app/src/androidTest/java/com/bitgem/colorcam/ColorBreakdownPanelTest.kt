@@ -1,14 +1,21 @@
 package com.bitgem.colorcam
 
 import androidx.camera.core.ImageAnalysis
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.bitgem.colorcam.domain.model.ColorResult
 import com.bitgem.colorcam.domain.model.RgbColor
+import com.bitgem.colorcam.ui.screens.COLORS_PANEL_TEST_TAG
 import com.bitgem.colorcam.ui.screens.CameraScreen
 import com.bitgem.colorcam.ui.viewmodel.CameraPermissionState
 import com.bitgem.colorcam.ui.viewmodel.ColorAnalysisUiState
@@ -16,6 +23,7 @@ import com.bitgem.colorcam.ui.components.ColorsPanel
 import com.bitgem.colorcam.ui.theme.ColorCamTheme
 import java.util.concurrent.Executors
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -146,5 +154,39 @@ class CameraScreenTest {
         composeRule.onNodeWithText(context.getString(R.string.permission_open_settings)).performClick()
 
         assertEquals(1, opened)
+    }
+
+    @Test
+    fun keepsThePanelOnTheRightWhenTheLocaleIsRtl() {
+        // Runs the screen in an RTL layout, as an `iw` device does. The panel must stay on the
+        // physical right: the reference UI shows a Hebrew heading with the panel still on the
+        // right, and an end-aligned panel alone mirrors to the left, which is what this test
+        // caught on a real emulator.
+        composeRule.setContent {
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                ColorCamTheme {
+                    CameraScreen(
+                        state = ColorAnalysisUiState(
+                            cameraPermission = CameraPermissionState.Granted,
+                            topColors = listOf(ColorResult(RgbColor(116, 114, 94), 100f)),
+                        ),
+                        analyzer = analyzer,
+                        analysisExecutor = executor,
+                        onRequestPermission = {},
+                        onOpenAppSettings = {},
+                        onCameraError = {},
+                        onDismissError = {},
+                    )
+                }
+            }
+        }
+
+        val screen = composeRule.onRoot().getBoundsInRoot()
+        val panel = composeRule.onNodeWithTag(COLORS_PANEL_TEST_TAG).getBoundsInRoot()
+
+        assertTrue(
+            "the panel must stay on the physical right in RTL, but was at $panel in a $screen screen",
+            panel.left.value > screen.right.value / 2f && panel.right.value <= screen.right.value,
+        )
     }
 }

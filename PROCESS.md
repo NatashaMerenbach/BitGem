@@ -40,13 +40,33 @@ Android dependencies" a *compiler-enforced* guarantee — `android.*` and `andro
 on `:domain`'s compile classpath. The author then asked for a single module, which is what the
 project ships: simpler builds, one APK, no module-boundary ceremony.
 
-The trade-off is worth stating plainly: the layering rule (`ui → domain ← data`, and `domain/` free
-of Android imports) is now a **convention** rather than a compile error. What keeps it honest:
+**The boundary is still enforced — by the build, not by review.** What a module boundary would have
+given for free is checked by `checkLayerBoundaries` in `app/build.gradle.kts`, wired into `check`, so
+a violation fails the build on the commit that introduces it:
+
+| rule | enforced |
+|---|---|
+| `domain/` imports nothing from `android.*` / `androidx.*` | ✅ build failure |
+| `domain/` imports nothing from `data/` or `ui/` | ✅ build failure |
+| `data/` imports nothing from `ui/` | ✅ build failure |
 
 ```bash
-# Must print nothing — the domain layer is pure Kotlin
-grep -rn "^import android" app/src/main/java/com/bitgem/colorcam/domain/
+$ ./gradlew check                     # includes :app:checkLayerBoundaries
+> Layer boundaries violated (see PROCESS.md §2.1):
+    domain/model/BoundaryProbe.kt → android.util.Log
 ```
+
+That is the cheap half of a module split: the same guarantee, no extra build files, ~0.5 s of build
+time, and it keeps a later extraction *mechanical* rather than exploratory, because the boundary is
+known to hold at all times — moving `domain/` into its own module then becomes a move, not a
+refactor.
+
+*Alternative considered (and rejected both before and after the change):* a fully modularised build
+(`:core:domain`, `:core:data`, `:feature:camera`) — the strongest enforcement, but it costs a build
+file and a version-catalog entry per module and buys nothing this app needs at ~3 600 lines. The
+honest trigger for revisiting: **more than one team working in this repo**, or `domain/` becoming a
+library someone else consumes. At that point the check is replaced by a real module (or
+Konsist/ArchUnit in CI) and the guarantee becomes structural instead of textual.
 
 The design was still *shaped* by the boundary, and that shape is worth keeping even though the
 compiler no longer enforces it. `ImageProxy` never reaches the domain: the pipeline is split at the
@@ -81,9 +101,25 @@ case in `data/`) trades the leak for boilerplate. I chose the leak.
 fun provideAnalyzer(repository: ColorRepositoryImpl): ImageAnalysis.Analyzer = repository
 ```
 
-The UI asks Hilt for an opaque `ImageAnalysis.Analyzer` and never sees a data-layer type; the
-ViewModel gets a camera handle without knowing where frames go; and the domain interface stays
-free of camera vocabulary.
+The UI asks Hilt for an opaque `ImageAnalysis.Analyzer` and never sees a data-layer type; the domain
+interface stays free of camera vocabulary; and the objects are handed to the composition root, so
+`CameraViewModel` never names a framework type either:
+
+```kotlin
+@EntryPoint @InstallIn(SingletonComponent::class)
+interface CameraAnalysisEntryPoint {
+    fun analyzer(): ImageAnalysis.Analyzer
+    @AnalysisExecutor fun analysisExecutor(): Executor
+}
+```
+
+What the ViewModel *does* keep is the UI state plus callbacks — `uiState`, `onCameraPermissionResult`,
+`onCameraError`, `onDismissError` — and nothing else. Carrying the analyzer and a raw `Executor`
+through it (which is what it did before) made it a courier for framework types: it worked, and the
+composable needs both objects anyway, but it stretched "the ViewModel exposes a state flow and
+orchestrates" into "the ViewModel also forwards CameraX handles". Since both bindings are singletons,
+the composition root can read them itself, and the CameraX vocabulary stays in the one layer that
+actually binds CameraX.
 
 *Alternatives considered:* (a) a `CameraFrameSource` port in `domain/` implemented in `data/`, with
 the composable pulling frames — rejected because it inverts the pull/push direction for no benefit
@@ -91,7 +127,9 @@ and the domain would still have to model "a stream of frames it did not ask for"
 `ImageAnalysis` use case and calling `setAnalyzer` inside the ViewModel — rejected, it makes the
 ViewModel own CameraX setup that only the composition's lifecycle knows about; (c) constructing the
 camera inside the composable and casting the repository — rejected, a cast is a worse contract than
-an interface.
+an interface; (d) a second, camera-only ViewModel whose only job is to be injected with the analyzer
+and the executor — rejected, it is the same courier with a new name; (e) keeping them on the
+ViewModel — the status quo this change replaces.
 
 ### 2.3 One entry point, plus an error channel
 
@@ -105,12 +143,26 @@ interface ColorRepository {
 `observeTopColors()` is what the screen uses (conflated `StateFlow`, so a slow collector skips
 values instead of slowing the camera down).
 
+Failures travel on a second flow rather than through the value stream, because a frame that cannot
+be analysed must not stop the camera: `analyze()` catches `Throwable`, logs the first failure of each
+burst (`ColorCam.Analysis` — with the frame geometry and strides, suppressed afterwards so a
+per-frame bug cannot bury its own trace) and emits on `observeAnalysisErrors()`, which the screen
+turns into a dismissible banner. The camera-binding failure takes the same route from
+`CameraPreview` (`ColorCam.Camera`). Nothing is thrown at the camera and nothing reaches the user as
+a stack trace: the trace is for `adb logcat`.
+
 An earlier revision also carried a pull-based entry point — `suspend fun getTopColors(frame:
 FrameData): List<ColorResult>`, driven by a `GetTopColorsUseCase` — on the grounds that the
 algorithm should be reachable for a still image, a share target or a widget. It was removed: no
 shipping code called it (the camera screen is the only consumer), so it was a tested but dead seam
 whose only guaranteed future was drift. Keeping it would also have meant duplicating the
 pipeline's dispatcher and locking rules for a caller that did not exist.
+
+This is the one place the build departs from the brief's wording, which asks for a use case that
+"takes raw frame pixel data (or a domain-level `FrameData`) and returns `List<ColorResult>`": what
+ships is the Flow-based twin of that shape. The trade is stated in README's "Conformance with the
+brief" — a live camera has no caller asking for one frame, and re-adding the shape is ~20 lines on
+top of an algorithm that is already request/response.
 
 The seam is still easy to re-add when a feature needs it: a `suspend fun` that runs
 `ColorQuantizer.quantize` on the analysis dispatcher under the same lock. What it must *not* do is
@@ -143,13 +195,21 @@ camera). It also made the ViewModel test harder — see §3.8.
 ### 3.1 The pipeline
 
 **sample → bin → weighted k-means over bins → merge near-identical clusters → temporal smoothing.**
+The sampling is done *during* the conversion (see §3.2): the converter walks a regular grid and
+decodes only those pixels, so the most expensive per-pixel work in the pipeline is never done for
+the 15/16 of pixels that would be discarded anyway.
 
-### 3.2 Sampling (1/16 of the pixels)
+### 3.2 Sampling (1/16 of the pixels), done during the conversion
 
-Every 4th pixel in x *and* y. The reasons, in order of weight:
+Every 4th pixel in x *and* y, decoded straight off the YUV planes — the converter walks the sample
+grid rather than converting everything and discarding 15/16 of it afterwards. The reasons, in order
+of weight:
 
-1. Cost: a 640×480 analysis stream is 307 200 pixels; the sampling step cuts the binning loop to
-   19 200 — a 16× reduction in the only per-pixel work in the pipeline.
+1. Cost: a 640×480 analysis stream is 307 200 pixels; sampling cuts the work to 19 200 — a 16×
+   reduction. Doing it *inside* the converter matters because the YUV maths (two multiplies, three
+   clamps and a pack per pixel) is the most expensive per-pixel work in the pipeline: sampling after
+   the conversion would have left that cost on 100 % of the pixels, and the ARGB buffer at 1.2 MB
+   instead of 77 KB.
 2. Redundancy: neighbouring sensor pixels are almost perfectly correlated, so the extra samples buy
    accuracy nobody can see. Measured on the synthetic 60/30/10 fixture, the share error stays under
    1.5 points at step 4.
@@ -158,6 +218,10 @@ Every 4th pixel in x *and* y. The reasons, in order of weight:
 
 The known weakness is grid aliasing — a 4-pixel-pitch pattern can be systematically over- or
 under-counted. A jittered/Poisson sample would fix it at the cost of determinism (see §6).
+
+The sample grid *is* the `FrameData` the rest of the pipeline sees: its width/height are the number
+of sampled columns/rows, so no later stage has to carry a stride around, and the histogram loop is
+a flat scan. `Yuv420Converter.sampledPixelCount` is the single place that decides the buffer size.
 
 ### 3.3 Why bin *first*, then cluster
 
@@ -389,9 +453,10 @@ Everything below is the output of a real run in this repository, not an expectat
 
 ### 5.1 The unit tests
 
-`./gradlew testDebugUnitTest` → **56 tests, 0 failures** (31 in `domain/analysis`, 9 in
-`domain/model`, 2 in `domain/usecase`, 9 in `data/camera`, 5 in `data/repository`), no device and no
-Robolectric; the colour pipeline itself (the 42 domain tests) runs in about a second.
+`./gradlew testDebugUnitTest` → **58 tests, 0 failures** (32 in `domain/analysis`, 9 in
+`domain/model`, 2 in `domain/usecases`, 9 in `data/camera`, 6 in `data/repository`), no device and no
+Robolectric; the colour pipeline itself (the 43 domain tests) runs in about a second.
+`./gradlew check` adds Android Lint (0 errors) and the layer-boundary check below.
 
 **Known-colour fixtures.** The converter is checked against the BT.601 reference vectors rather than
 against itself:
@@ -435,14 +500,32 @@ verified to start empty and then reflect the latest frame.
 
 ### 5.2 The UI tests
 
-Compose instrumented tests assert the rendered panel text — heading, two-decimal percentages and
-`R:116 G:114 B:94` lines — read from resources so they pass on any locale, plus the permission gate
-(tapping *Grant camera access* invokes the callback). They compile and package
-(`app-debug-androidTest.apk`, 0.94 MB).
+Six Compose instrumented tests assert the rendered panel — heading, two-decimal percentages and
+`R:116 G:114 B:94` lines, read from resources so they pass on any locale — plus the permission gate
+(*Grant camera access* invokes the callback; the blocked variant offers Settings instead), and the
+panel's position under an RTL layout.
 
-**Honest gap:** those three instrumented tests have *not* been executed — they need an emulator or
-device (`./gradlew connectedDebugAndroidTest`), and that run has not happened in this environment.
-Everything else in this section is executed output.
+**Executed, not just compiled:** `./gradlew connectedDebugAndroidTest` against an Android 17 (API 37)
+emulator → **6 tests, 0 failures, 37 s** (`app-debug-androidTest.apk`, 0.94 MB).
+
+That run was worth more than the tests it ran, because a suite that had never been executed had rotted
+in two ways nothing else could have caught:
+
+1. **The entire suite failed on modern Android before reaching our code.** Espresso 3.6.1 calls
+   `android.hardware.input.InputManager.getInstance()`, which newer platforms no longer have:
+   `java.lang.NoSuchMethodException: android.hardware.input.InputManager.getInstance []` at
+   `Espresso.onIdle(Espresso.java:357)` — every test, in the framework, not in the app. Bumping to
+   `espresso-core 3.7.0` + `androidx.test.ext:junit 1.3.0` fixed it. This is the concrete cost of a
+   suite that only ever compiles.
+2. **Running the app itself in a Hebrew locale found a real UI bug.** `Alignment.CenterEnd` mirrors in
+   RTL, so on an `iw` device the panel moved to the *left* edge — while the reference UI is a Hebrew
+   heading with the panel still on the right. The fix belongs on the *container*: `Modifier.align` is
+   resolved by the parent's measure policy, not by the child's composition locals (wrapping only the
+   panel was the first attempt, and the new test caught it with `left=0.0.dp`). Now pinned by
+   `CameraScreenTest.keepsThePanelOnTheRightWhenTheLocaleIsRtl`.
+
+Both are recorded because they are the argument for the rule this project now follows: an instrumented
+test that is never run is documentation, not a test.
 
 ### 5.3 What is *not* verified
 
@@ -469,32 +552,31 @@ sampled pixels and therefore sum to 100.
    ΔE in Lab (or a cheap approximation) would make `mergeDistance = 24` mean something consistent
    across hues. It costs a per-pixel transform — which is affordable precisely *because* the
    pipeline only transforms the samples, not the frame.
-2. **Convert less, not just sample less.** Right now every pixel of the frame is converted to ARGB
-   and only every 16th is used. Sampling in the YUV domain (decode only the sampled positions) would
-   cut the conversion work by ~16× — the single biggest remaining win, and the reason the sampling
-   step lives in `domain/` as a separate class rather than inside the converter.
-3. **Jittered (or blue-noise) sampling** to kill grid aliasing, traded against determinism. A cheap
+2. **Jittered (or blue-noise) sampling** to kill grid aliasing, traded against determinism. A cheap
    compromise: rotate the grid origin per frame using a fixed low-discrepancy sequence — still
-   deterministic, no longer aligned with the sensor's 4-pixel structures.
-4. **Box-filter downscale instead of point sampling.** Averaging 4×4 blocks before clustering is
+   deterministic, no longer aligned with the sensor's 4-pixel structures. This is now the top of the
+   list: the win from *not decoding* 15/16 of the frame is banked (the old "convert less, not just
+   sample less" item is done — sampling happens inside the converter), so what is left of the
+   sampling story is the aliasing weakness that comes with a fixed grid.
+3. **Box-filter downscale instead of point sampling.** Averaging 4×4 blocks before clustering is
    better on noisy sensors than picking one pixel per block, at the cost of 16 reads per sample.
-5. **Adaptive k.** `k = 8` is a constant; a silhouette score or an elbow heuristic would let a
-   two-colour scene stop pretending it needs eight clusters, and a busy scene stop merging distinct
+4. **Adaptive k.** `k = 6` is a constant; a silhouette score or an elbow heuristic would let a
+   two-colour scene stop pretending it needs six clusters, and a busy scene stop merging distinct
    colours.
-6. **Hysteresis for card ordering.** EMA smooths the numbers but adjacent cards can still swap
+5. **Hysteresis for card ordering.** EMA smooths the numbers but adjacent cards can still swap
    places frame to frame. Holding a swap until the difference exceeds a margin (in percentage and in
    colour distance) would remove the last visible jitter.
-7. **Colour names.** "38.24% · olive" is far more useful to a human than "38.24% · R:116 G:114 B:94",
+6. **Colour names.** "38.24% · olive" is far more useful to a human than "38.24% · R:116 G:114 B:94",
    and would be another hand-written table (nearest named colour in Lab).
-8. **A tap-to-freeze / copy-hex affordance**, and pinning a swatch to compare it against a new
+7. **A tap-to-freeze / copy-hex affordance**, and pinning a swatch to compare it against a new
    scene — the feature that turns this from a demo into a tool.
-9. **Region of interest.** Analyse only a centre crop or a tapped area, which is what you actually
+8. **Region of interest.** Analyse only a centre crop or a tapped area, which is what you actually
    want when colour-matching a fabric or a painted wall.
-10. **Measure it.** Macrobenchmark for jank, `dumpsys batterystats` for the drain of the 10/s
-    pipeline, and a device matrix (a Samsung semi-planar NV21 device and a Pixel) for the stride
-    paths that are currently covered only by synthetic frames.
-11. **Close the instrumented-test gap** (§5.2): run `connectedDebugAndroidTest` in CI, and add a Hilt
-    test double so the camera can be faked end-to-end rather than only at the repository boundary.
+9. **Measure it.** Macrobenchmark for jank, `dumpsys batterystats` for the drain of the 10/s
+   pipeline, and a device matrix (a Samsung semi-planar NV21 device and a Pixel) for the stride
+   paths that are currently covered only by synthetic frames.
+10. **Put the instrumented suite in CI.** It is green locally (§5.2) but nothing runs it automatically
+    yet, and §5.2 is exactly what happens when nothing does.
 
 ---
 

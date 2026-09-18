@@ -10,6 +10,7 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.ImageAnalysis
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -23,7 +24,10 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bitgem.colorcam.data.di.CameraAnalysisEntryPoint
 import com.bitgem.colorcam.ui.viewmodel.CameraViewModel
+import dagger.hilt.android.EntryPointAccessors
+import java.util.concurrent.Executor
 
 /**
  * Stateful entry point: owns the ViewModel, the runtime-permission launcher and the
@@ -43,6 +47,19 @@ fun CameraRoute(viewModel: CameraViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
+
+    // The CameraX objects come from the composition root rather than from the ViewModel: they are
+    // the one part of the pipeline that genuinely belongs to the UI, and both bindings are
+    // singletons, so this is the same analyzer the repository claims to be and the same single
+    // analysis thread.
+    val cameraAnalysis = remember(context) {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            CameraAnalysisEntryPoint::class.java,
+        )
+    }
+    val analyzer: ImageAnalysis.Analyzer = remember(cameraAnalysis) { cameraAnalysis.analyzer() }
+    val analysisExecutor: Executor = remember(cameraAnalysis) { cameraAnalysis.analysisExecutor() }
 
     /**
      * Whether the system dialog has been shown at least once. Android reports
@@ -90,8 +107,8 @@ fun CameraRoute(viewModel: CameraViewModel = hiltViewModel()) {
 
     CameraScreen(
         state = uiState,
-        analyzer = viewModel.analyzer,
-        analysisExecutor = viewModel.analysisExecutor,
+        analyzer = analyzer,
+        analysisExecutor = analysisExecutor,
         onRequestPermission = { permissionLauncher.launch(Manifest.permission.CAMERA) },
         onOpenAppSettings = {
             val intent = Intent(

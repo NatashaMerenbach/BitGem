@@ -95,14 +95,35 @@ temporal smoothing exists for); the emulator's virtual-scene camera works too.
 
 ```bash
 # All JVM unit tests, no device needed — the interesting ones.
-# Verified: 56 tests, 0 failures (31 analysis / 9 camera / 9 model / 5 repository / 2 usecases)
+# Verified: 58 tests, 0 failures (32 analysis / 9 camera / 9 model / 6 repository / 2 usecases)
 ./gradlew testDebugUnitTest
 
-# Instrumented Compose UI tests (needs a device/emulator) — NOT yet executed here
+# Everything CI would run: the unit tests, Android Lint (0 errors) and the layer-boundary check.
+./gradlew check
+
+# Instrumented Compose UI tests — needs a device/emulator.
+# Verified: 6 tests, 0 failures on an Android 17 (API 37) emulator, 37 s.
 ./gradlew connectedDebugAndroidTest
 ```
 
 ---
+
+### Debugging on a device
+
+The UI deliberately shows a fixed string for a failed frame (`error_analysis_failed`) — a user
+should not be reading plane strides — but the `Throwable` is logged before it is swallowed:
+
+```bash
+adb logcat -s ColorCam.Analysis ColorCam.Camera
+```
+
+* **`ColorCam.Analysis`** — the first failure of each *burst*, with the frame geometry and plane
+  strides it choked on plus the stack trace. Later frames of the same burst are suppressed (a
+  stride bug throws on every frame, and at ~10 analyses/s it would bury its own trace within
+  seconds); the next frame that succeeds re-arms it. That pair — what broke, and the geometry it
+  broke on — is what makes a vendor-HAL bug report actionable.
+* **`ColorCam.Camera`** — a failure to bind the camera to the lifecycle (permission revoked, camera
+  held by another app, a device that cannot satisfy the 640×480 analysis request).
 
 ## Architecture
 
@@ -124,51 +145,59 @@ Google's recommended app architecture (UI → domain → data), as layered **pac
   │   │                    ElapsedTimeSource
   │   ├── repository/      ColorRepositoryImpl  ← implements domain ColorRepository
   │   │                                            AND CameraX ImageAnalysis.Analyzer
-  │   └── di/              AnalysisModule, RepositoryModule, CameraModule, @AnalysisExecutor
+  │   └── di/              AnalysisModule, RepositoryModule, CameraModule, @AnalysisExecutor,
+  │                        CameraAnalysisEntryPoint
   └── domain/              Pure Kotlin: no Android, no CameraX, no Compose
       ├── model/           RgbColor, ColorResult, FrameData, Yuv420Frame
-      ├── analysis/        Yuv420Converter, PixelSampler, RgbHistogram,
-      │                    KMeansColorQuantizer, ColorSmoother, ColorMath
+      ├── analysis/        Yuv420Converter (converts *and* samples), RgbHistogram,
+      │                    ColorQuantizer, ColorSmoother, ColorMath
       ├── repository/      ColorRepository (interface)
       └── usecases/        ObserveTopColorsUseCase, ObserveErrorsUseCase
 ```
 
-The dependency rule is `ui → domain ← data`, and it is stated here as something you can check rather
-than something you have to remember:
+The dependency rule is `ui → domain ← data`, and it is enforced rather than remembered:
 
-| package | may import | check |
+| package | may import | enforced by |
 |---|---|---|
-| `domain/` | Kotlin/JVM only — stdlib (`kotlin.math`, `kotlin.random`), `java.nio.ByteBuffer`, coroutines, `javax.inject`. No `android.*`, no `androidx.*` | `grep -rn "^import android" domain/` → **empty** ✅ |
-| `data/` | `domain/` + CameraX, Hilt, `android.os` (through `ElapsedTimeSource`) | `grep -rn "^import com.bitgem.colorcam.ui" data/` → **empty** ✅ |
-| `ui/` | `domain/`, Compose, CameraX view types | `grep -rn "^import com.bitgem.colorcam.data" ui/` → **one hit**, see below |
+| `domain/` | Kotlin/JVM only — stdlib (`kotlin.math`, `kotlin.random`), `java.nio.ByteBuffer`, coroutines, `javax.inject`. No `android.*`, no `androidx.*`, nothing from `data/` or `ui/` | `./gradlew check` → `checkLayerBoundaries` ✅ |
+| `data/` | `domain/` + CameraX, Hilt, `android.os` (through `ElapsedTimeSource`); never `ui/` | `./gradlew check` → `checkLayerBoundaries` ✅ |
+| `ui/` | `domain/`, Compose, CameraX view types | one documented import, see below |
 
-So the domain knows nothing about Android, the camera or the screen, and the UI never touches the
-analysis pipeline: it receives an opaque `ImageAnalysis.Analyzer` from `CameraModule` and renders
-`List<ColorResult>`.
+So the domain knows nothing about Android, the camera or the screen, and the ViewModel knows nothing
+about CameraX: the screen receives an opaque `ImageAnalysis.Analyzer` plus its `Executor` from
+`CameraRoute`, which reads both straight out of the graph through `CameraAnalysisEntryPoint`.
 
-The single upward import is `com.bitgem.colorcam.data.di.AnalysisExecutor`, injected into
-`CameraViewModel` so the composition can attach the analyzer to the executor the camera pipeline
-actually runs on. That qualifier lives next to the code that creates the executor (`data/di`), which
-is why the leak exists and why it is documented rather than hidden: moving the qualifier into a
-neutral package (or into `domain/` as a plain annotation) would close the hole.
+The single upward import is that entry point, `com.bitgem.colorcam.data.di.CameraAnalysisEntryPoint`.
+It lives in `data/di` because that is where the analyzer and the analysis thread are created — an
+entry point is a service locator, and this one is confined to the composition root, which is the
+layer allowed to have one. Moving it to a neutral package (or handing the objects over some
+UI-owned port) would close the hole entirely.
 
-Keeping this a single Gradle module keeps the build simple and ships one APK; the cost is that these
-rules are conventions rather than compile errors — which is exactly why each one has a one-line
-command that verifies it.
+Keeping this a single Gradle module keeps the build simple and ships one APK. What it costs is that
+the *tooling* no longer draws the boundary — so the two rules a module split would enforce for free
+are enforced by `checkLayerBoundaries` in `app/build.gradle.kts` instead, wired into `check`: a
+`domain/` file that imports `android.util.Log` fails the build with the file and the import named,
+rather than waiting for a reviewer to notice. Changing a rule is a one-line edit there plus a build,
+which is what keeps this section honest instead of aspirational. (Why not a real module split, what
+it would buy, and the trigger for revisiting — more than one team in the repo — are in PROCESS.md
+§2.1.)
 
 Everything is DI-wired with Hilt: `@HiltAndroidApp` on `ColorCamApplication`, `@HiltViewModel` on
 `CameraViewModel`, and three modules in `data/di` — `AnalysisModule` (algorithm objects + the
 analysis executor), `RepositoryModule` (`@Binds` interface → implementation) and `CameraModule`
-(the analyzer the UI binds).
+(the analyzer the UI binds), plus `CameraAnalysisEntryPoint` for the two CameraX objects the
+composition root fetches.
 
 ### Data flow
 
 ```
 CameraX  ──ImageProxy(YUV_420_888)──▶  ColorRepositoryImpl.analyze()   [single background thread]
                                             │  ImageToYuv420Frame → Yuv420Frame (buffers + strides)
-                                            │  converter → FrameData (ARGB, reused scratch buffer)
+                                            │  converter samples + converts: every 4th pixel in
+                                            │    x and y (1/16), so the YUV maths only runs on
+                                            │    the pixels that get binned
+                                            │  FrameData = the packed sample grid (ARGB, reused)
                                             │  throttle: ≤1 analysis / 100 ms
-                                            │  sampler → every 4th pixel in x and y (1/16)
                                             │  histogram → 32³ bins, epoch-stamped, reused
                                             │  weighted k-means (k=8, fixed seed) over bins
                                             │  merge colours within 24 RGB units
@@ -186,7 +215,8 @@ only receive `List<ColorResult>`.
 
 ### The algorithm in one paragraph
 
-Sample the frame on a regular grid (every 4th pixel in both axes = 1/16 of the pixels), then drop
+The converter samples while it converts — a regular grid, every 4th pixel in both axes (1/16 of
+the pixels) — so the YUV maths runs only on the pixels that will actually be binned. Then drop
 the samples into a coarse RGB histogram (5 bits per channel = 32 levels = 32 768 bins; each bin
 keeps its population *and* the mean of the pixels that landed in it). Cluster the **non-empty
 bins** — not the pixels — with weighted k-means (Lloyd's algorithm, k-means++ seeding, fixed seed
@@ -212,7 +242,7 @@ BitGem/
 │       │   ├── data/                       camera (CameraX), repository impl, di
 │       │   └── ui/                         screens, viewmodel, components, theme
 │       ├── main/res/                       strings (incl. values-iw/ Hebrew), theme, icons
-│       ├── test/java/com/bitgem/colorcam/  56 JVM unit tests / 9 test classes
+│       ├── test/java/com/bitgem/colorcam/  57 JVM unit tests / 8 test classes
 │       └── androidTest/java/com/bitgem/colorcam/  Compose UI + permission-gate tests
 ├── gradle/libs.versions.toml  Version catalog
 ├── PROCESS.md                 Architecture/algorithm write-up: decisions, difficulties, verification
@@ -233,3 +263,42 @@ BitGem/
   (`@AnalysisExecutor`, the same one handed to `setAnalyzer`), so no pixel work ever touches the main
   thread; `STRATEGY_KEEP_ONLY_LATEST` plus a 100 ms throttle keep the pipeline from becoming the
   bottleneck.
+
+## Conformance with the brief
+
+Where each explicit ask landed, including the one place this build deliberately differs.
+
+| asked for | shipped | where |
+|---|---|---|
+| `ColorRepository` in `domain`: `analyzeColors(frame)` **or** a Flow | the Flow alternative the brief offers (`observeTopColors()`) | `domain/repository/ColorRepository.kt` |
+| `ColorRepositoryImpl` wrapping the CameraX `ImageAnalysis.Analyzer`: YUV_420_888 → sampling → clustering → percentages | yes — it implements `ColorRepository` *and* `ImageAnalysis.Analyzer` | `data/repository/ColorRepositoryImpl.kt` |
+| `@Binds` interface → impl in a repository module | `RepositoryModule` (+ `AnalysisModule`, `CameraModule`, `CameraAnalysisEntryPoint`) | `data/di/AppModules.kt` |
+| Analysis off the UI thread, never blocking the camera pipeline | single-thread `@AnalysisExecutor` handed to `setAnalyzer`; `KEEP_ONLY_LATEST` + 100 ms throttle | `data/di/AppModules.kt` |
+| `CameraViewModel`: Hilt, `StateFlow<ColorAnalysisUiState>`, collected with `collectAsStateWithLifecycle`, no business logic | yes — its public surface is the state plus three callbacks, and it names no framework type | `ui/viewmodel/CameraViewModel.kt` |
+| UI a pure function of state; no pixel or analysis logic in composables | yes — `CameraScreen`/`ColorsPanel` take state only | `ui/screens/`, `ui/components/` |
+| Hand-implemented binning/clustering, no OpenCV / ML Kit / Palette / built-in quantiser | yes — 32³ histogram + weighted k-means + weighted-mean merge, all hand-written | `domain/analysis/` |
+| "Multi-module **or** clearly-separated layers", with no business logic in the ViewModel | the second option: one `:app` module, `domain/`/`data/`/`ui/` packages, and the layer rules checked by the build (`checkLayerBoundaries`) rather than left to review | `app/build.gradle.kts`, README → Architecture |
+| Structured so the analysis is unit-testable with no camera or device | yes — 58 JVM tests, 0 failures, `ImageProxy`/`PlaneProxy` mocked | `app/src/test/` |
+
+### The one deviation: no request/response use case
+
+The brief asks for a use case that "takes raw frame pixel data (or a domain-level `FrameData`) and
+returns `List<ColorResult>`". This build ships only the push-based twin,
+`ObserveTopColorsUseCase(): Flow<List<ColorResult>>`, because the live camera is the app's only frame
+producer — the request/response pair (`GetTopColorsUseCase` + `ColorRepository.getTopColors(frame)`)
+existed, with tests, and was deleted once nothing called it. The design constraint it carried is
+written down instead of the code: **a one-shot analysis must not inherit the temporal smoother's
+state**, because it has to answer for the frame it was given rather than for a blend with whatever
+the camera last saw (PROCESS.md §2.3, and the repository's KDoc).
+
+Re-adding it is a ~20-line change if that shape is required: a `suspend fun getTopColors(frame:
+FrameData)` running `ColorQuantizer.quantize` on the analysis dispatcher under the same lock, plus a
+use case wrapping it — the algorithm underneath is *already* request/response
+(`quantize(frame, topColorCount): List<ColorResult>`). Same maths, same fixtures, different entry
+point.
+
+**Known gaps, stated rather than hidden:** the reference-image percentages in `PROCESS.md` are the
+fixture's rather than measured from the app, and cannot be reproduced from the live camera because the
+source photo is proprietary. (The instrumented tests used to be listed here as unrun; they now run —
+see the Tests section.)
+

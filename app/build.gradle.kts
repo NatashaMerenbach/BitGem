@@ -101,3 +101,50 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }
+
+// ----- Layer boundaries, enforced by the build instead of by code review (PROCESS.md §2.1) -----
+//
+// A single module makes the layering a convention: nothing stops `domain/` from importing
+// `android.util.Log` except someone noticing. This task turns the two rules that matter into build
+// failures, so `./gradlew check` (and therefore CI) catches a violation on the commit that
+// introduces it:
+//
+//   domain/  pure Kotlin — no android.*, no androidx.*, nothing from data/ or ui/
+//   data/    never reaches up into ui/
+//
+// It is the cheap half of a module split: the same guarantee and no extra build files, and it is
+// what keeps extracting :domain later a mechanical move rather than a refactor.
+val checkLayerBoundaries by tasks.registering {
+    val sourceRoot = layout.projectDirectory.dir("src/main/java/com/bitgem/colorcam")
+    inputs.dir(sourceRoot)
+    group = "verification"
+    description = "Fails the build if domain/ or data/ import outside their own layer."
+
+    doLast {
+        fun violationsIn(layer: String, forbidden: (String) -> Boolean): List<String> =
+            sourceRoot.dir(layer).asFile.walkTopDown()
+                .filter { it.isFile && it.extension == "kt" }
+                .flatMap { file ->
+                    file.readLines().asSequence()
+                        .filter { it.startsWith("import ") }
+                        .filter(forbidden)
+                        .map { "${file.relativeTo(sourceRoot.asFile)} → ${it.removePrefix("import ")}" }
+                }
+                .toList()
+
+        val violations = violationsIn("domain") { line ->
+            // One prefix covers both android.* and androidx.*, and nothing else in the catalog
+            // starts with it — javax.inject (the documented DI leak) does not match.
+            line.startsWith("import android") ||
+                line.startsWith("import com.bitgem.colorcam.data") ||
+                line.startsWith("import com.bitgem.colorcam.ui")
+        } + violationsIn("data") { line -> line.startsWith("import com.bitgem.colorcam.ui") }
+
+        check(violations.isEmpty()) {
+            "Layer boundaries violated (see PROCESS.md §2.1):\n" +
+                violations.joinToString("\n") { "  $it" }
+        }
+    }
+}
+
+tasks.named("check") { dependsOn(checkLayerBoundaries) }

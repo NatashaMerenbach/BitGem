@@ -156,4 +156,63 @@ class Yuv420ConverterTest {
         assertEquals(2, converted.height)
         assertEquals(0xFFFFFFFF.toInt(), scratch[0])
     }
+
+    @Test
+    fun `sampling converts every 4th pixel in both axes, tightly packed`() {
+        // Luma carries the pixel's own index and chroma is neutral, so each converted value
+        // identifies the position it came from (with neutral chroma, R = G = B = Y).
+        val width = 8
+        val height = 8
+        val luma = ByteArray(width * height) { (it and 0xFF).toByte() }
+        val neutral = ByteArray((width / 2) * (height / 2)) { 128.toByte() }
+        val frame = YuvTestFrames.frame(width, height, luma, neutral, neutral)
+
+        val converted = converter.convert(frame, step = 4)
+
+        // ceil(8/4) x ceil(8/4) samples, packed row-major with no gaps: the pixels of the
+        // returned FrameData *are* the sample grid, so nothing downstream walks a stride.
+        assertEquals(2, converted.width)
+        assertEquals(2, converted.height)
+        assertEquals(4, converted.pixels.size)
+        assertEquals(listOf(0, 4, 32, 36), converted.pixels.map { it shr 8 and 0xFF })
+    }
+
+    @Test
+    fun `the production sampling step keeps the documented 1 in 16 ratio`() {
+        // samplingStep is the pipeline's cost knob and its effect is quadratic: step 4 converts
+        // 1/16 of a 640x480 analysis frame (19,200 of 307,200 pixels). PROCESS.md, the README
+        // data-flow diagram and the converter's KDoc all describe that ratio, so it is pinned
+        // here — quietly moving the default to 1 multiplies the YUV work per frame by 16 on a
+        // background thread that runs up to 10 times a second.
+        val step = AnalysisConfig().samplingStep
+
+        assertEquals(19_200, Yuv420Converter.sampledPixelCount(640, 480, step))
+    }
+
+    @Test
+    fun `an oversized buffer is legal and only the sampled prefix is written`() {
+        val frame = YuvTestFrames.flat(8, 8, YuvTestFrames.WHITE_Y, 128, 128)
+        val buffer = IntArray(Yuv420Converter.sampledPixelCount(8, 8, 4) + 8) { -1 }
+
+        val converted = converter.convertIntoFrameData(frame, buffer, step = 4)
+
+        assertEquals(4, converted.pixelCount)
+        assertTrue(
+            "the tail must stay untouched but was ${buffer.drop(4)}",
+            buffer.drop(4).all { it == -1 },
+        )
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `a buffer smaller than the sampled count is rejected`() {
+        val frame = YuvTestFrames.flat(8, 8, YuvTestFrames.WHITE_Y, 128, 128)
+        val tooSmall = IntArray(Yuv420Converter.sampledPixelCount(8, 8, 4) - 1)
+
+        converter.convertIntoFrameData(frame, tooSmall, step = 4)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `step below 1 is rejected`() {
+        converter.convert(YuvTestFrames.flat(4, 4, YuvTestFrames.WHITE_Y, 128, 128), step = 0)
+    }
 }

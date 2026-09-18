@@ -1,5 +1,6 @@
 package com.bitgem.colorcam.ui.screens
 
+import android.util.Log
 import android.util.Size
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -98,6 +99,10 @@ fun CameraPreview(
                         imageAnalysis,
                     )
                 } catch (error: Throwable) {
+                    // The UI shows a fixed string; the trace goes to logcat, which is the only
+                    // place a bug report can get it from (a revoked permission, a camera held by
+                    // another app, or a device that cannot satisfy the resolution request).
+                    Log.e(LOG_TAG, "Binding the camera to the lifecycle failed", error)
                     onCameraError(error)
                 }
             },
@@ -117,3 +122,6 @@ fun CameraPreview(
 
 private const val ANALYSIS_WIDTH = 640
 private const val ANALYSIS_HEIGHT = 480
+
+/** Filterable with `adb logcat -s ColorCam.Camera` (see README, "Debugging on a device"). */
+private const val LOG_TAG = "ColorCam.Camera"

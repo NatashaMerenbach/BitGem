@@ -10,11 +10,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.bitgem.colorcam.R
 import com.bitgem.colorcam.domain.model.ColorResult
@@ -28,6 +32,12 @@ import com.bitgem.colorcam.ui.components.ErrorMessage
 import com.bitgem.colorcam.ui.theme.ColorCamTheme
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
+
+/**
+ * Identifies the colour panel for the instrumented tests, which assert where it sits in RTL.
+ * Public because `androidTest` is a separate compilation and cannot see `internal`.
+ */
+const val COLORS_PANEL_TEST_TAG = "colors_panel"
 
 /**
  * The whole screen, as a pure function of [state].
@@ -57,24 +67,36 @@ fun CameraScreen(
             .background(Color.Black),
     ) {
         if (state.cameraPermission == CameraPermissionState.Granted) {
-            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                val panelWidth = maxOf(MIN_PANEL_WIDTH, maxWidth * PANEL_WIDTH_FRACTION)
+            // The whole preview overlay is laid out LTR on purpose: the panel must sit on the
+            // *physical* right edge. The reference UI shows a Hebrew heading with the panel still
+            // on the right, and `Alignment.CenterEnd` alone mirrors it to the left on an `iw`
+            // device — note that the direction has to be forced on the *container*, because
+            // `Modifier.align` is resolved by the parent's measure policy, not by the child's
+            // composition locals. Nothing inside needs RTL: the preview is a surface, the panel's
+            // content is percentages / `R:116 G:114 B:94` / a centred heading, and the error banner
+            // is centre- and bottom-anchored. (Verified on an emulator with a Hebrew per-app
+            // locale, and pinned by CameraScreenTest.keepsThePanelOnTheRightWhenTheLocaleIsRtl.)
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                    val panelWidth = maxOf(MIN_PANEL_WIDTH, maxWidth * PANEL_WIDTH_FRACTION)
 
-                CameraPreview(
-                    analyzer = analyzer,
-                    analysisExecutor = analysisExecutor,
-                    onCameraError = onCameraError,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                    CameraPreview(
+                        analyzer = analyzer,
+                        analysisExecutor = analysisExecutor,
+                        onCameraError = onCameraError,
+                        modifier = Modifier.fillMaxSize(),
+                    )
 
-                ColorsPanel(
-                    colorResults = state.topColors,
-                    isWaitingForFrames = state.isWaitingForFrames,
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .width(panelWidth)
-                        .fillMaxHeight(),
-                )
+                    ColorsPanel(
+                        colorResults = state.topColors,
+                        isWaitingForFrames = state.isWaitingForFrames,
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .width(panelWidth)
+                            .fillMaxHeight()
+                            .testTag(COLORS_PANEL_TEST_TAG),
+                    )
+                }
             }
         } else {
             CameraPermissionRequest(

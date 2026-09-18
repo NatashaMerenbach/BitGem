@@ -1,5 +1,6 @@
 package com.bitgem.colorcam.data.di
 
+import androidx.camera.core.ImageAnalysis
 import com.bitgem.colorcam.data.camera.ElapsedTimeSource
 import com.bitgem.colorcam.data.repository.ColorRepositoryImpl
 import com.bitgem.colorcam.domain.analysis.AnalysisConfig
@@ -10,6 +11,7 @@ import com.bitgem.colorcam.domain.repository.ColorRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
+import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import java.util.concurrent.Executor
@@ -37,7 +39,7 @@ object AnalysisModule {
 
     @Provides
     @Singleton
-    fun provideColorQuantizer(): ColorQuantizer = ColorQuantizer()
+    fun provideColorQuantizer(config: AnalysisConfig): ColorQuantizer = ColorQuantizer(config)
 
     @Provides
     @Singleton
@@ -85,6 +87,27 @@ object CameraModule {
      */
     @Provides
     @Singleton
-    fun provideAnalyzer(repository: ColorRepositoryImpl): androidx.camera.core.ImageAnalysis.Analyzer =
-        repository
+    fun provideAnalyzer(repository: ColorRepositoryImpl): ImageAnalysis.Analyzer = repository
+}
+
+/**
+ * The two CameraX objects the preview needs, fetched by the composition root.
+ *
+ * `CameraViewModel` deliberately does *not* carry these: a ViewModel whose public surface is
+ * "the UI state plus callbacks" has no business couriering `ImageAnalysis.Analyzer` and a raw
+ * `Executor` into the presentation layer. The CameraX vocabulary (and the executor) belongs to
+ * the one place that actually binds CameraX — `CameraRoute`/`CameraPreview` — so the objects are
+ * read straight out of the graph there. An entry point is a service locator, but this is the
+ * composition root, which is the layer allowed to have one.
+ *
+ * Both bindings are `@Singleton`, so this returns the same analyzer the repository claims to be
+ * and the same single analysis thread the pipeline is confined to.
+ */
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+interface CameraAnalysisEntryPoint {
+    fun analyzer(): ImageAnalysis.Analyzer
+
+    @AnalysisExecutor
+    fun analysisExecutor(): Executor
 }
