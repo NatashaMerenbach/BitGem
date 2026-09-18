@@ -18,7 +18,7 @@ import javax.inject.Singleton
  * *before* closing the proxy — see `ColorRepositoryImpl.analyze`.
  */
 @Singleton
-class ImageFrameMapper @Inject constructor() {
+class ImageToYuv420Frame @Inject constructor() {
 
     fun map(image: ImageProxy): Yuv420Frame {
         require(image.format == ImageProxyFormat.YUV_420_888) {

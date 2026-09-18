@@ -1,4 +1,4 @@
-package com.bitgem.colorcam.domain.usecase
+package com.bitgem.colorcam.domain.usecases
 
 import com.bitgem.colorcam.domain.repository.ColorRepository
 import kotlinx.coroutines.flow.Flow

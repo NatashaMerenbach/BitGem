@@ -95,7 +95,7 @@ temporal smoothing exists for); the emulator's virtual-scene camera works too.
 
 ```bash
 # All JVM unit tests, no device needed — the interesting ones.
-# Verified: 56 tests, 0 failures (31 analysis / 9 camera / 9 model / 5 repository / 2 usecase)
+# Verified: 56 tests, 0 failures (31 analysis / 9 camera / 9 model / 5 repository / 2 usecases)
 ./gradlew testDebugUnitTest
 
 # Instrumented Compose UI tests (needs a device/emulator) — NOT yet executed here
@@ -111,53 +111,74 @@ Google's recommended app architecture (UI → domain → data), as layered **pac
 
 ```
 :app  (com.bitgem.colorcam)
-  ├── ui/              Compose UI, ViewModel, permission flow, CameraX *preview*
-  │   ├── camera/      CameraRoute → CameraScreen → components   (pure functions of state)
-  │   │                CameraViewModel (@HiltViewModel) + ColorAnalysisUiState
-  │   │                CameraPreview   (AndroidView + PreviewView, binds ImageAnalysis)
-  │   └── theme/
-  ├── data/            Everything CameraX/ImageProxy specific + Hilt wiring
-  │   ├── camera/      ImageProxyFrameMapper (ImageProxy → domain Yuv420Frame)
-  │   │                ElapsedTimeSource
-  │   ├── repository/  ColorRepositoryImpl  ← implements domain ColorRepository
-  │   │                                        AND CameraX ImageAnalysis.Analyzer
-  │   └── di/          AnalysisModule, RepositoryModule, CameraModule, qualifiers
-  └── domain/          Pure Kotlin: no Android, no CameraX, no Compose
-      ├── model/       RgbColor, ColorResult, FrameData, Yuv420Frame
-      ├── analysis/    Yuv420Converter, PixelSampler, RgbHistogram,
-      │                KMeansColorQuantizer, ColorSmoother, ColorMath
-      ├── repository/  ColorRepository (interface)
-      └── usecase/     ObserveTopColorsUseCase, ObserveErrorsUseCase
+  ├── ui/                  Compose UI — presentation only
+  │   ├── screens/         CameraRoute → CameraScreen → CameraPreview
+  │   │                    Route: stateful, owns the ViewModel + permission launcher
+  │   │                    Screen: pure function of ColorAnalysisUiState
+  │   │                    Preview: the AndroidView/PreviewView CameraX binding
+  │   ├── viewmodel/       CameraViewModel (@HiltViewModel), ColorAnalysisUiState, CameraError
+  │   ├── components/      ColorsPanel (+ ColorRow), ErrorMessage, CameraPermissionRequest
+  │   └── theme/           ColorCamTheme, colours, typography
+  ├── data/                Everything CameraX/ImageProxy specific + Hilt wiring
+  │   ├── camera/          ImageToYuv420Frame (ImageProxy → domain Yuv420Frame)
+  │   │                    ElapsedTimeSource
+  │   ├── repository/      ColorRepositoryImpl  ← implements domain ColorRepository
+  │   │                                            AND CameraX ImageAnalysis.Analyzer
+  │   └── di/              AnalysisModule, RepositoryModule, CameraModule, @AnalysisExecutor
+  └── domain/              Pure Kotlin: no Android, no CameraX, no Compose
+      ├── model/           RgbColor, ColorResult, FrameData, Yuv420Frame
+      ├── analysis/        Yuv420Converter, PixelSampler, RgbHistogram,
+      │                    KMeansColorQuantizer, ColorSmoother, ColorMath
+      ├── repository/      ColorRepository (interface)
+      └── usecases/        ObserveTopColorsUseCase, ObserveErrorsUseCase
 ```
 
-The layering is one-directional — `ui → domain ← data` — and the dependency rule is that
-**nothing in `domain/` imports anything from `android.*`, `androidx.*` or `data/`**. Keeping it a
-single module means the build stays simple and the whole app is one APK; the cost is that the rule
-is a convention rather than a compile error, so `domain/` must be kept free of Android imports by
-review (grep for `import android` under `domain/` — it should return nothing).
+The dependency rule is `ui → domain ← data`, and it is stated here as something you can check rather
+than something you have to remember:
 
-Everything is DI-wired with Hilt (`@HiltAndroidApp` → `@HiltViewModel`), and the UI layer's only
-knowledge of the camera pipeline is an opaque `ImageAnalysis.Analyzer` handed to it by
-`CameraModule`.
+| package | may import | check |
+|---|---|---|
+| `domain/` | Kotlin/JVM only — stdlib (`kotlin.math`, `kotlin.random`), `java.nio.ByteBuffer`, coroutines, `javax.inject`. No `android.*`, no `androidx.*` | `grep -rn "^import android" domain/` → **empty** ✅ |
+| `data/` | `domain/` + CameraX, Hilt, `android.os` (through `ElapsedTimeSource`) | `grep -rn "^import com.bitgem.colorcam.ui" data/` → **empty** ✅ |
+| `ui/` | `domain/`, Compose, CameraX view types | `grep -rn "^import com.bitgem.colorcam.data" ui/` → **one hit**, see below |
+
+So the domain knows nothing about Android, the camera or the screen, and the UI never touches the
+analysis pipeline: it receives an opaque `ImageAnalysis.Analyzer` from `CameraModule` and renders
+`List<ColorResult>`.
+
+The single upward import is `com.bitgem.colorcam.data.di.AnalysisExecutor`, injected into
+`CameraViewModel` so the composition can attach the analyzer to the executor the camera pipeline
+actually runs on. That qualifier lives next to the code that creates the executor (`data/di`), which
+is why the leak exists and why it is documented rather than hidden: moving the qualifier into a
+neutral package (or into `domain/` as a plain annotation) would close the hole.
+
+Keeping this a single Gradle module keeps the build simple and ships one APK; the cost is that these
+rules are conventions rather than compile errors — which is exactly why each one has a one-line
+command that verifies it.
+
+Everything is DI-wired with Hilt: `@HiltAndroidApp` on `ColorCamApplication`, `@HiltViewModel` on
+`CameraViewModel`, and three modules in `data/di` — `AnalysisModule` (algorithm objects + the
+analysis executor), `RepositoryModule` (`@Binds` interface → implementation) and `CameraModule`
+(the analyzer the UI binds).
 
 ### Data flow
 
 ```
 CameraX  ──ImageProxy(YUV_420_888)──▶  ColorRepositoryImpl.analyze()   [single background thread]
-                                            │  mapper → Yuv420Frame (buffers + strides)
+                                            │  ImageToYuv420Frame → Yuv420Frame (buffers + strides)
                                             │  converter → FrameData (ARGB, reused scratch buffer)
                                             │  throttle: ≤1 analysis / 100 ms
                                             │  sampler → every 4th pixel in x and y (1/16)
                                             │  histogram → 32³ bins, epoch-stamped, reused
                                             │  weighted k-means (k=8, fixed seed) over bins
                                             │  merge colours within 24 RGB units
-                                            │  ColourSmoother (EMA α=0.35)  → top 5
+                                            │  ColorSmoother (EMA α=0.35)  → top 5
                                             ▼
                               MutableStateFlow<List<ColorResult>>   (conflated)
                                             ▼
-                       ObserveTopColorsUseCase → CameraViewModel.uiState (StateFlow)
+                    ObserveTopColorsUseCase (domain/usecases) → CameraViewModel.uiState
                                             ▼
-                       CameraRoute → collectAsStateWithLifecycle → CameraScreen (pure)
+            CameraRoute → collectAsStateWithLifecycle → CameraScreen → ColorsPanel (pure)
 ```
 
 Nothing in the pipeline runs on the main thread, and the UI never touches a pixel: the composables
@@ -186,13 +207,13 @@ BitGem/
 │   └── src/
 │       ├── main/java/com/bitgem/colorcam/
 │       │   ├── ColorCamApplication.kt      @HiltAndroidApp
-│       │   ├── MainActivity.kt
-│       │   ├── domain/                     pure Kotlin: models, analysis, repository, usecase
+│       │   ├── MainActivity.kt             @AndroidEntryPoint, edge-to-edge, hosts CameraRoute
+│       │   ├── domain/                     pure Kotlin: model, analysis, repository, usecases
 │       │   ├── data/                       camera (CameraX), repository impl, di
-│       │   └── ui/                         camera (Route/Screen/ViewModel/Preview), theme, components
+│       │   └── ui/                         screens, viewmodel, components, theme
 │       ├── main/res/                       strings (incl. values-iw/ Hebrew), theme, icons
-│       ├── test/java/com/bitgem/colorcam/  63 JVM unit tests
-│       └── androidTest/java/com/bitgem/colorcam/  Compose UI tests
+│       ├── test/java/com/bitgem/colorcam/  56 JVM unit tests / 9 test classes
+│       └── androidTest/java/com/bitgem/colorcam/  Compose UI + permission-gate tests
 ├── gradle/libs.versions.toml  Version catalog
 ├── PROCESS.md                 Architecture/algorithm write-up: decisions, difficulties, verification
 └── README.md
@@ -204,10 +225,11 @@ BitGem/
   the contrast calculation are all hand-written (`app/src/main/java/com/bitgem/colorcam/domain/analysis/`).
 * **No business logic in the ViewModel** — it combines flows into `ColorAnalysisUiState` and
   forwards permission/error events. No arithmetic, no pixel access.
-* **No pixel or analysis logic in composables** — `CameraScreen` and its children are pure functions
-  of `ColorAnalysisUiState`.
+* **No pixel or analysis logic in composables** — `CameraScreen`, `ColorsPanel` and their children
+  are pure functions of `ColorAnalysisUiState`.
 * **No hard-coded UI strings** — everything is in `res/values/strings.xml` and read via
   `stringResource`.
-* **Background execution** — a dedicated single-thread `Executor` drives `ImageAnalysis`, exposed
-  to coroutines as a dispatcher; `STRATEGY_KEEP_ONLY_LATEST` + a 100 ms throttle keep the pipeline
-  from becoming the bottleneck.
+* **Background execution** — CameraX invokes the analyzer on a dedicated single-thread `Executor`
+  (`@AnalysisExecutor`, the same one handed to `setAnalyzer`), so no pixel work ever touches the main
+  thread; `STRATEGY_KEEP_ONLY_LATEST` plus a 100 ms throttle keep the pipeline from becoming the
+  bottleneck.

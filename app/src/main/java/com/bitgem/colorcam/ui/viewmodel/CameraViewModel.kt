@@ -1,12 +1,12 @@
-package com.bitgem.colorcam.ui.camera
+package com.bitgem.colorcam.ui.viewmodel
 
 import androidx.camera.core.ImageAnalysis
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bitgem.colorcam.data.di.AnalysisExecutor
 import com.bitgem.colorcam.domain.model.ColorResult
-import com.bitgem.colorcam.domain.usecase.ObserveErrorsUseCase
-import com.bitgem.colorcam.domain.usecase.ObserveTopColorsUseCase
+import com.bitgem.colorcam.domain.usecases.ObserveErrorsUseCase
+import com.bitgem.colorcam.domain.usecases.ObserveTopColorsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted

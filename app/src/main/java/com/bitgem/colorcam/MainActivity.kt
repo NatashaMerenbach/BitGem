@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.bitgem.colorcam.ui.camera.CameraRoute
+import com.bitgem.colorcam.ui.screens.CameraRoute
 import com.bitgem.colorcam.ui.theme.ColorCamTheme
 import dagger.hilt.android.AndroidEntryPoint
 

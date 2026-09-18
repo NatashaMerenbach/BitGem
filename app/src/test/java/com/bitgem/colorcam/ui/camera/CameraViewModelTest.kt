@@ -5,8 +5,10 @@ import com.bitgem.colorcam.MainDispatcherRule
 import com.bitgem.colorcam.domain.model.ColorResult
 import com.bitgem.colorcam.domain.model.RgbColor
 import com.bitgem.colorcam.domain.repository.ColorRepository
-import com.bitgem.colorcam.domain.usecase.ObserveErrorsUseCase
-import com.bitgem.colorcam.domain.usecase.ObserveTopColorsUseCase
+import com.bitgem.colorcam.domain.usecases.ObserveErrorsUseCase
+import com.bitgem.colorcam.domain.usecases.ObserveTopColorsUseCase
+import com.bitgem.colorcam.ui.viewmodel.CameraError
+import com.bitgem.colorcam.ui.viewmodel.CameraViewModel
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import kotlinx.coroutines.ExperimentalCoroutinesApi

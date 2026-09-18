@@ -1,4 +1,4 @@
-package com.bitgem.colorcam.ui.camera
+package com.bitgem.colorcam.ui.screens
 
 import android.annotation.SuppressLint
 import androidx.camera.core.ImageAnalysis
@@ -19,11 +19,14 @@ import androidx.compose.ui.unit.dp
 import com.bitgem.colorcam.R
 import com.bitgem.colorcam.domain.model.ColorResult
 import com.bitgem.colorcam.domain.model.RgbColor
-import com.bitgem.colorcam.ui.camera.components.CameraPermissionRequest
-import com.bitgem.colorcam.ui.camera.components.ColorsPanel
-import com.bitgem.colorcam.ui.camera.components.ErrorMessage
+import com.bitgem.colorcam.ui.viewmodel.CameraError
+import com.bitgem.colorcam.ui.viewmodel.ColorAnalysisUiState
+import com.bitgem.colorcam.ui.components.CameraPermissionRequest
+import com.bitgem.colorcam.ui.components.ColorsPanel
+import com.bitgem.colorcam.ui.components.ErrorMessage
 import com.bitgem.colorcam.ui.theme.ColorCamTheme
 import java.util.concurrent.Executor
+import java.util.concurrent.Executors
 
 /**
  * The whole screen, as a pure function of [state].
@@ -119,7 +122,7 @@ private fun CameraScreenPreview() {
                 ),
             ),
             analyzer = ImageAnalysis.Analyzer { },
-            analysisExecutor = java.util.concurrent.Executors.newSingleThreadExecutor(),
+            analysisExecutor = Executors.newSingleThreadExecutor(),
             onRequestPermission = {},
             onCameraError = {},
             onDismissError = {},

@@ -3,7 +3,7 @@ package com.bitgem.colorcam.data.repository
 import androidx.camera.core.ImageInfo
 import androidx.camera.core.ImageProxy
 import com.bitgem.colorcam.data.camera.ElapsedTimeSource
-import com.bitgem.colorcam.data.camera.ImageFrameMapper
+import com.bitgem.colorcam.data.camera.ImageToYuv420Frame
 import com.bitgem.colorcam.domain.analysis.AnalysisConfig
 import com.bitgem.colorcam.domain.analysis.ColorSmoother
 import com.bitgem.colorcam.domain.analysis.KMeansColorQuantizer
@@ -39,7 +39,7 @@ class ColorRepositoryImplTest {
     private var now = 1_000L
 
     private val repository = ColorRepositoryImpl(
-        imageFrameMapper = ImageFrameMapper(),
+        imageToYuv420Frame = ImageToYuv420Frame(),
         yuv420Converter = Yuv420Converter(),
         colorQuantizer = KMeansColorQuantizer(config),
         colorSmoother = ColorSmoother(alpha = 1f),

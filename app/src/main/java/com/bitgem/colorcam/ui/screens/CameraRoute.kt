@@ -1,4 +1,4 @@
-package com.bitgem.colorcam.ui.camera
+package com.bitgem.colorcam.ui.screens
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bitgem.colorcam.ui.viewmodel.CameraViewModel
 
 /**
  * Stateful entry point: owns the ViewModel, the runtime-permission launcher and the

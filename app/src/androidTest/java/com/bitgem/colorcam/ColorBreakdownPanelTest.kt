@@ -9,9 +9,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.bitgem.colorcam.domain.model.ColorResult
 import com.bitgem.colorcam.domain.model.RgbColor
-import com.bitgem.colorcam.ui.camera.CameraScreen
-import com.bitgem.colorcam.ui.camera.ColorAnalysisUiState
-import com.bitgem.colorcam.ui.camera.components.ColorsPanel
+import com.bitgem.colorcam.ui.screens.CameraScreen
+import com.bitgem.colorcam.ui.viewmodel.ColorAnalysisUiState
+import com.bitgem.colorcam.ui.components.ColorsPanel
 import com.bitgem.colorcam.ui.theme.ColorCamTheme
 import java.util.concurrent.Executors
 import org.junit.Assert.assertEquals

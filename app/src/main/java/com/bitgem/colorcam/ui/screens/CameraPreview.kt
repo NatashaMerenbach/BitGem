@@ -1,4 +1,4 @@
-package com.bitgem.colorcam.ui.camera
+package com.bitgem.colorcam.ui.screens
 
 import android.util.Size
 import androidx.camera.core.CameraSelector

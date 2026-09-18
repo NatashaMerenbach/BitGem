@@ -17,7 +17,7 @@ import org.mockito.Mockito.mock
  */
 class ImageFrameMapperTest {
 
-    private val mapper = ImageFrameMapper()
+    private val mapper = ImageToYuv420Frame()
     private val converter = Yuv420Converter()
 
     private fun plane(buffer: ByteArray, rowStride: Int, pixelStride: Int): ImageProxy.PlaneProxy {

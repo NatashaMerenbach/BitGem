@@ -3,7 +3,7 @@ package com.bitgem.colorcam.data.repository
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.bitgem.colorcam.data.camera.ElapsedTimeSource
-import com.bitgem.colorcam.data.camera.ImageFrameMapper
+import com.bitgem.colorcam.data.camera.ImageToYuv420Frame
 import com.bitgem.colorcam.domain.analysis.AnalysisConfig
 import com.bitgem.colorcam.domain.analysis.ColorQuantizer
 import com.bitgem.colorcam.domain.analysis.ColorSmoother
@@ -38,7 +38,7 @@ import kotlinx.coroutines.flow.asStateFlow
  */
 @Singleton
 class ColorRepositoryImpl @Inject constructor(
-    private val imageFrameMapper: ImageFrameMapper,
+    private val imageToYuv420Frame: ImageToYuv420Frame,
     private val yuv420Converter: Yuv420Converter,
     private val colorQuantizer: ColorQuantizer,
     private val colorSmoother: ColorSmoother,
@@ -79,7 +79,7 @@ class ColorRepositoryImpl @Inject constructor(
             synchronized(analysisLock) {
                 // The conversion HAS to happen while the proxy is open: closing it invalidates
                 // the plane buffers (and the underlying camera buffer is recycled).
-                val yuvFrame = imageFrameMapper.map(image)
+                val yuvFrame = imageToYuv420Frame.map(image)
                 val pixels = scratchBufferFor(yuvFrame.width, yuvFrame.height)
                 val frame = yuv420Converter.convertInto(yuvFrame, pixels)
 
