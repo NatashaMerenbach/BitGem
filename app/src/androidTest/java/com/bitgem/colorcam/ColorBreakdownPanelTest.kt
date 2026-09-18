@@ -10,6 +10,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.bitgem.colorcam.domain.model.ColorResult
 import com.bitgem.colorcam.domain.model.RgbColor
 import com.bitgem.colorcam.ui.screens.CameraScreen
+import com.bitgem.colorcam.ui.viewmodel.CameraPermissionState
 import com.bitgem.colorcam.ui.viewmodel.ColorAnalysisUiState
 import com.bitgem.colorcam.ui.components.ColorsPanel
 import com.bitgem.colorcam.ui.theme.ColorCamTheme
@@ -104,10 +105,11 @@ class CameraScreenTest {
         composeRule.setContent {
             ColorCamTheme {
                 CameraScreen(
-                    state = ColorAnalysisUiState(hasCameraPermission = false),
+                    state = ColorAnalysisUiState(cameraPermission = CameraPermissionState.Requestable),
                     analyzer = analyzer,
                     analysisExecutor = executor,
                     onRequestPermission = { requested++ },
+                    onOpenAppSettings = {},
                     onCameraError = {},
                     onDismissError = {},
                 )
@@ -118,5 +120,31 @@ class CameraScreenTest {
         composeRule.onNodeWithText(context.getString(R.string.permission_grant)).performClick()
 
         assertEquals(1, requested)
+    }
+
+    @Test
+    fun sendsTheUserToSettingsWhenThePermissionIsBlocked() {
+        var opened = 0
+        composeRule.setContent {
+            ColorCamTheme {
+                CameraScreen(
+                    state = ColorAnalysisUiState(cameraPermission = CameraPermissionState.Blocked),
+                    analyzer = analyzer,
+                    analysisExecutor = executor,
+                    onRequestPermission = {},
+                    onOpenAppSettings = { opened++ },
+                    onCameraError = {},
+                    onDismissError = {},
+                )
+            }
+        }
+
+        // The blocked variant must not offer to ask again — that request would resolve with no
+        // dialog at all — it must offer Settings, which is the only place the permission can
+        // be turned back on.
+        composeRule.onNodeWithText(context.getString(R.string.permission_blocked_title)).assertIsDisplayed()
+        composeRule.onNodeWithText(context.getString(R.string.permission_open_settings)).performClick()
+
+        assertEquals(1, opened)
     }
 }

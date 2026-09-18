@@ -8,6 +8,7 @@ import com.bitgem.colorcam.domain.repository.ColorRepository
 import com.bitgem.colorcam.domain.usecases.ObserveErrorsUseCase
 import com.bitgem.colorcam.domain.usecases.ObserveTopColorsUseCase
 import com.bitgem.colorcam.ui.viewmodel.CameraError
+import com.bitgem.colorcam.ui.viewmodel.CameraPermissionState
 import com.bitgem.colorcam.ui.viewmodel.CameraViewModel
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
@@ -71,22 +72,32 @@ class CameraViewModelTest {
     }
 
     @Test
-    fun `starts with permission denied, no colours and no error`() {
-        assertFalse(viewModel.uiState.value.hasCameraPermission)
+    fun `starts with the permission still requestable`() {
+        assertEquals(CameraPermissionState.Requestable, viewModel.uiState.value.cameraPermission)
         assertTrue(viewModel.uiState.value.topColors.isEmpty())
         assertTrue(viewModel.uiState.value.isWaitingForFrames)
         assertNull(viewModel.uiState.value.cameraError)
     }
 
     @Test
-    fun `permission result is reflected in the state`() = runTest {
+    fun `permission results map to the gate state`() = runTest {
         observeUiState()
 
-        viewModel.onCameraPermissionResult(true)
-        assertTrue(viewModel.uiState.value.hasCameraPermission)
+        viewModel.onCameraPermissionResult(granted = true, canRequestAgain = false)
+        assertEquals(CameraPermissionState.Granted, viewModel.uiState.value.cameraPermission)
 
-        viewModel.onCameraPermissionResult(false)
-        assertFalse(viewModel.uiState.value.hasCameraPermission)
+        // Denied, but the system dialog is still available.
+        viewModel.onCameraPermissionResult(granted = false, canRequestAgain = true)
+        assertEquals(CameraPermissionState.Requestable, viewModel.uiState.value.cameraPermission)
+
+        // Denied with no dialog left: only Settings can grant it, so the gate must say so
+        // rather than keep offering a button that does nothing.
+        viewModel.onCameraPermissionResult(granted = false, canRequestAgain = false)
+        assertEquals(CameraPermissionState.Blocked, viewModel.uiState.value.cameraPermission)
+
+        // And granting from Settings flips it back.
+        viewModel.onCameraPermissionResult(granted = true, canRequestAgain = false)
+        assertEquals(CameraPermissionState.Granted, viewModel.uiState.value.cameraPermission)
     }
 
     @Test

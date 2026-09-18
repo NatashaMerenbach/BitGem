@@ -20,6 +20,7 @@ import com.bitgem.colorcam.R
 import com.bitgem.colorcam.domain.model.ColorResult
 import com.bitgem.colorcam.domain.model.RgbColor
 import com.bitgem.colorcam.ui.viewmodel.CameraError
+import com.bitgem.colorcam.ui.viewmodel.CameraPermissionState
 import com.bitgem.colorcam.ui.viewmodel.ColorAnalysisUiState
 import com.bitgem.colorcam.ui.components.CameraPermissionRequest
 import com.bitgem.colorcam.ui.components.ColorsPanel
@@ -45,6 +46,7 @@ fun CameraScreen(
     analyzer: ImageAnalysis.Analyzer,
     analysisExecutor: Executor,
     onRequestPermission: () -> Unit,
+    onOpenAppSettings: () -> Unit,
     onCameraError: (Throwable) -> Unit,
     onDismissError: () -> Unit,
     modifier: Modifier = Modifier,
@@ -54,7 +56,7 @@ fun CameraScreen(
             .fillMaxSize()
             .background(Color.Black),
     ) {
-        if (state.hasCameraPermission) {
+        if (state.cameraPermission == CameraPermissionState.Granted) {
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 val panelWidth = maxOf(MIN_PANEL_WIDTH, maxWidth * PANEL_WIDTH_FRACTION)
 
@@ -76,7 +78,9 @@ fun CameraScreen(
             }
         } else {
             CameraPermissionRequest(
+                isBlocked = state.cameraPermission == CameraPermissionState.Blocked,
                 onRequestPermission = onRequestPermission,
+                onOpenAppSettings = onOpenAppSettings,
                 modifier = Modifier
                     .align(Alignment.Center)
                     .padding(24.dp),
@@ -112,7 +116,7 @@ private fun CameraScreenPreview() {
     ColorCamTheme {
         CameraScreen(
             state = ColorAnalysisUiState(
-                hasCameraPermission = true,
+                cameraPermission = CameraPermissionState.Granted,
                 topColors = listOf(
                     ColorResult(RgbColor(116, 114, 94), 38.24f),
                     ColorResult(RgbColor(101, 99, 77), 24.11f),
@@ -124,6 +128,7 @@ private fun CameraScreenPreview() {
             analyzer = ImageAnalysis.Analyzer { },
             analysisExecutor = Executors.newSingleThreadExecutor(),
             onRequestPermission = {},
+            onOpenAppSettings = {},
             onCameraError = {},
             onDismissError = {},
         )

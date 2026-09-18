@@ -22,12 +22,32 @@ import javax.inject.Inject
  * value it needs is here, so the composables never reach for anything themselves.
  */
 data class ColorAnalysisUiState(
-    val hasCameraPermission: Boolean = false,
+    val cameraPermission: CameraPermissionState = CameraPermissionState.Requestable,
     val topColors: List<ColorResult> = emptyList(),
     val cameraError: CameraError? = null,
 ) {
     /** True until the first frame has been analysed. */
     val isWaitingForFrames: Boolean get() = topColors.isEmpty()
+}
+
+/**
+ * How the camera permission stands, and therefore what the gate can do about it.
+ *
+ * [Blocked] is the state Android gives no direct signal for: once the user has denied the
+ * request and chosen "don't ask again" (or denied it twice), launching the request again
+ * resolves instantly with a denial and *no dialog*, so a "grant" button silently does nothing.
+ * Regaining the permission from that point means sending the user to the app's Settings page,
+ * which is what the third state exists to represent.
+ */
+enum class CameraPermissionState {
+    /** Granted: the camera can be bound. */
+    Granted,
+
+    /** Not granted, but asking again still shows the system dialog. */
+    Requestable,
+
+    /** Not granted, and Android will not show the dialog again: Settings is the only route. */
+    Blocked,
 }
 
 /** Errors the screen can show. UI-agnostic (no strings) — the screen maps them to resources. */
@@ -52,11 +72,11 @@ class CameraViewModel @Inject constructor(
     @AnalysisExecutor val analysisExecutor: Executor,
 ) : ViewModel() {
 
-    private val hasCameraPermission = MutableStateFlow(false)
+    private val cameraPermission = MutableStateFlow(CameraPermissionState.Requestable)
     private val cameraError = MutableStateFlow<CameraError?>(null)
 
     val uiState: StateFlow<ColorAnalysisUiState> =
-        combine(hasCameraPermission, observeTopColors(), cameraError, ::ColorAnalysisUiState)
+        combine(cameraPermission, observeTopColors(), cameraError, ::ColorAnalysisUiState)
             .stateIn(
                 scope = viewModelScope,
                 // Survives a configuration change without tearing the camera down, but stops
@@ -71,8 +91,21 @@ class CameraViewModel @Inject constructor(
         }
     }
 
-    fun onCameraPermissionResult(granted: Boolean) {
-        hasCameraPermission.value = granted
+    /**
+     * Reports the permission state after a check or a request.
+     *
+     * @param granted whether the CAMERA permission is currently held.
+     * @param canRequestAgain whether launching the request *now* would still show the system
+     * dialog — i.e. either we have never asked, or the user denied it while the rationale flag
+     * is still set. When it is false and the permission is not granted, Android has stopped
+     * offering the dialog and only Settings can grant it.
+     */
+    fun onCameraPermissionResult(granted: Boolean, canRequestAgain: Boolean) {
+        cameraPermission.value = when {
+            granted -> CameraPermissionState.Granted
+            canRequestAgain -> CameraPermissionState.Requestable
+            else -> CameraPermissionState.Blocked
+        }
     }
 
     fun onCameraError(error: Throwable) {

@@ -6,6 +6,9 @@
     <string name="permission_title">Camera access needed</string>
     <string name="permission_rationale">Color Breakdown analyses the live camera image to show you the five most common colours in the frame. Nothing leaves your device — frames are never stored or uploaded.</string>
     <string name="permission_grant">Grant camera access</string>
+    <string name="permission_blocked_title">Camera access is blocked</string>
+    <string name="permission_blocked_rationale">Android will not ask for this permission again. Open Settings and allow Camera access to continue.</string>
+    <string name="permission_open_settings">Open settings</string>
 
     <!-- Colour panel -->
     <string name="color_breakdown_title">Color Breakdown</string>

@@ -20,13 +20,18 @@ import com.bitgem.colorcam.ui.theme.ColorCamTheme
 /**
  * Shown instead of the camera preview while the runtime CAMERA permission is missing.
  *
- * The rationale is spelled out (including the fact that frames never leave the device) rather
- * than firing the system dialog blindly — and the button re-triggers the request after a
- * denial, which the system dialog alone cannot do.
+ * Two variants, because the action that actually works differs:
+ *  - [isBlocked] `false`: the system dialog is still available, so the rationale is spelled out
+ *    (including the fact that frames never leave the device) and the button asks again.
+ *  - [isBlocked] `true`: Android has stopped offering the dialog, so asking is a no-op — the
+ *    only route left is the app's Settings page, and the copy says so instead of pretending.
+ *    Without this branch the gate keeps showing a button that silently does nothing.
  */
 @Composable
 fun CameraPermissionRequest(
+    isBlocked: Boolean,
     onRequestPermission: () -> Unit,
+    onOpenAppSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -35,22 +40,30 @@ fun CameraPermissionRequest(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
-            text = stringResource(R.string.permission_title),
+            text = stringResource(
+                if (isBlocked) R.string.permission_blocked_title else R.string.permission_title,
+            ),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center,
         )
         Text(
-            text = stringResource(R.string.permission_rationale),
+            text = stringResource(
+                if (isBlocked) R.string.permission_blocked_rationale else R.string.permission_rationale,
+            ),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
         Button(
-            onClick = onRequestPermission,
+            onClick = if (isBlocked) onOpenAppSettings else onRequestPermission,
             modifier = Modifier.padding(top = 4.dp),
         ) {
-            Text(text = stringResource(R.string.permission_grant))
+            Text(
+                text = stringResource(
+                    if (isBlocked) R.string.permission_open_settings else R.string.permission_grant,
+                ),
+            )
         }
     }
 }
@@ -59,6 +72,25 @@ fun CameraPermissionRequest(
 @Composable
 private fun CameraPermissionRequestPreview() {
     ColorCamTheme {
-        CameraPermissionRequest(onRequestPermission = {}, modifier = Modifier.padding(24.dp))
+        CameraPermissionRequest(
+            isBlocked = false,
+            onRequestPermission = {},
+            onOpenAppSettings = {},
+            modifier = Modifier.padding(24.dp),
+        )
+    }
+}
+
+/** The variant shown after Android has stopped offering the system dialog. */
+@Preview(widthDp = 360)
+@Composable
+private fun CameraPermissionBlockedPreview() {
+    ColorCamTheme {
+        CameraPermissionRequest(
+            isBlocked = true,
+            onRequestPermission = {},
+            onOpenAppSettings = {},
+            modifier = Modifier.padding(24.dp),
+        )
     }
 }
