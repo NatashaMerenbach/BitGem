@@ -114,7 +114,7 @@ fun CameraScreen(
                 message = stringResource(error.messageRes),
                 onDismiss = onDismissError,
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
+                    .align(Alignment.Center)
                     .padding(16.dp),
             )
         }
