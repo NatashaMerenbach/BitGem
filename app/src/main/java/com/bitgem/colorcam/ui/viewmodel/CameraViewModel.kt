@@ -1,5 +1,6 @@
 package com.bitgem.colorcam.ui.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.bitgem.colorcam.domain.model.ColorResult
@@ -108,6 +109,7 @@ class CameraViewModel @Inject constructor(
     }
 
     fun onCameraError(error: Throwable) {
+        Log.e("CameraViewModel", "Camera error", error)
         cameraError.value = CameraError.CameraUnavailable
     }
 
