@@ -505,8 +505,10 @@ Six Compose instrumented tests assert the rendered panel — heading, two-decima
 (*Grant camera access* invokes the callback; the blocked variant offers Settings instead), and the
 panel's position under an RTL layout.
 
-**Executed, not just compiled:** `./gradlew connectedDebugAndroidTest` against an Android 17 (API 37)
-emulator → **6 tests, 0 failures, 37 s** (`app-debug-androidTest.apk`, 0.94 MB).
+**Executed, not just compiled:** `./gradlew connectedDebugAndroidTest` → **6 tests, 0 failures** on
+an Android 17 (API 37) emulator **and** on a real Samsung SM-A725F (Android 14) — both connected at
+once, so the suite ran twice, 37 s each (`app-debug-androidTest.apk`, 0.94 MB). The app itself was
+then installed and run on both devices with a live camera.
 
 That run was worth more than the tests it ran, because a suite that had never been executed had rotted
 in two ways nothing else could have caught:

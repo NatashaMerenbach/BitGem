@@ -118,7 +118,8 @@ class CameraScreenTest {
                     analysisExecutor = executor,
                     onRequestPermission = { requested++ },
                     onOpenAppSettings = {},
-                    onCameraError = {},
+                    onCameraStarted = {},
+            onCameraError = {},
                     onDismissError = {},
                 )
             }
@@ -141,7 +142,8 @@ class CameraScreenTest {
                     analysisExecutor = executor,
                     onRequestPermission = {},
                     onOpenAppSettings = { opened++ },
-                    onCameraError = {},
+                    onCameraStarted = {},
+            onCameraError = {},
                     onDismissError = {},
                 )
             }
@@ -174,7 +176,8 @@ class CameraScreenTest {
                         analysisExecutor = executor,
                         onRequestPermission = {},
                         onOpenAppSettings = {},
-                        onCameraError = {},
+                        onCameraStarted = {},
+            onCameraError = {},
                         onDismissError = {},
                     )
                 }

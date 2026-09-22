@@ -120,12 +120,48 @@ class CameraViewModelTest {
     }
 
     @Test
+    fun `a stale camera error clears itself once the camera binds`() = runTest {
+        observeUiState()
+
+        // The camera was busy for a moment, or the permission had just been granted in Settings.
+        viewModel.onCameraError(IllegalStateException("camera in use"))
+        assertEquals(CameraError.CameraUnavailable, viewModel.uiState.value.cameraError)
+
+        // The retry in CameraPreview succeeds, so the banner must not stay on screen: an error
+        // that survives the condition it describes reads as "this fails every time".
+        viewModel.onCameraStarted()
+        assertNull(viewModel.uiState.value.cameraError)
+    }
+
+    @Test
     fun `an analysis failure is surfaced`() = runTest {
         observeUiState()
 
         analysisErrors.emit(IllegalArgumentException("bad frame"))
 
         assertEquals(CameraError.AnalysisFailed, viewModel.uiState.value.cameraError)
+    }
+
+    @Test
+    fun `a stale analysis error clears itself when frames flow again`() = runTest {
+        observeUiState()
+        analysisErrors.emit(IllegalArgumentException("bad frame"))
+        assertEquals(CameraError.AnalysisFailed, viewModel.uiState.value.cameraError)
+
+        colors.value = listOf(ColorResult(RgbColor(10, 20, 30), 100f))
+
+        assertNull(viewModel.uiState.value.cameraError)
+    }
+
+    @Test
+    fun `an analysis error survives while frames keep failing`() = runTest {
+        observeUiState()
+        analysisErrors.emit(IllegalArgumentException("bad frame"))
+
+        // No colours arrive (the failure repeats every frame), so the banner stays — the clearing
+        // above must not turn a real, ongoing failure into a silent one.
+        assertEquals(CameraError.AnalysisFailed, viewModel.uiState.value.cameraError)
+        assertEquals(emptyList<ColorResult>(), viewModel.uiState.value.topColors)
     }
 
     private class FakeRepository(

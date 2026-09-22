@@ -89,6 +89,17 @@ class CameraViewModel @Inject constructor(
         viewModelScope.launch {
             observeErrorsUseCase().collect { cameraError.value = CameraError.AnalysisFailed }
         }
+        viewModelScope.launch {
+            // Frames are flowing again, so an earlier analysis failure is stale information.
+            // Leaving it up until the user dismisses it is what made an error look like it
+            // appeared every time the camera opened; a failure that repeats on every frame keeps
+            // the banner, because this only fires when the pipeline actually produces output.
+            observeTopColors().collect { colors ->
+                if (colors.isNotEmpty() && cameraError.value == CameraError.AnalysisFailed) {
+                    cameraError.value = null
+                }
+            }
+        }
     }
 
     /**
@@ -111,6 +122,17 @@ class CameraViewModel @Inject constructor(
     fun onCameraError(error: Throwable) {
         Log.e("CameraViewModel", "Camera error", error)
         cameraError.value = CameraError.CameraUnavailable
+    }
+
+    /**
+     * The camera bound successfully, so a "camera unavailable" from an earlier attempt is stale.
+     *
+     * This is what stops a *transient* bind failure (the camera was busy for a moment, or the
+     * permission had just been granted in Settings) from leaving an error on screen for the rest
+     * of the session — and the retry in `CameraPreview` is what gives it a chance to recover.
+     */
+    fun onCameraStarted() {
+        if (cameraError.value == CameraError.CameraUnavailable) cameraError.value = null
     }
 
     fun onDismissError() {

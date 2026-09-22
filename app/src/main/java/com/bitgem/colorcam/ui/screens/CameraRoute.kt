@@ -121,6 +121,7 @@ fun CameraRoute(viewModel: CameraViewModel = hiltViewModel()) {
             }
             context.startActivity(intent)
         },
+        onCameraStarted = viewModel::onCameraStarted,
         onCameraError = viewModel::onCameraError,
         onDismissError = viewModel::onDismissError,
     )

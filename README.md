@@ -72,13 +72,14 @@ what the temporal smoothing is for); the emulator's virtual-scene camera also wo
 ```bash
 ./gradlew testDebugUnitTest        # 58 JVM tests, 0 failures — no device needed
 ./gradlew check                    # + Android Lint (0 errors) + the layer-boundary check
-./gradlew connectedDebugAndroidTest  # 6 instrumented Compose UI tests — needs a device/emulator
+./gradlew connectedDebugAndroidTest  # 6 instrumented UI tests: 6/6 on an API 37 emulator and on
+                                     # a Samsung SM-A725F (Android 14), both connected at once
 ```
 
 ### Debugging on a device
 
 Failures are logged (with frame geometry, throttled to one per burst) even though the UI shows
-only a fixed string: (Samsung Galaxy A72, Android 16)
+only a fixed string:
 
 ```bash
 adb logcat -s ColorCam.Analysis ColorCam.Camera

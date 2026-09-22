@@ -57,6 +57,7 @@ fun CameraScreen(
     analysisExecutor: Executor,
     onRequestPermission: () -> Unit,
     onOpenAppSettings: () -> Unit,
+    onCameraStarted: () -> Unit,
     onCameraError: (Throwable) -> Unit,
     onDismissError: () -> Unit,
     modifier: Modifier = Modifier,
@@ -83,6 +84,7 @@ fun CameraScreen(
                     CameraPreview(
                         analyzer = analyzer,
                         analysisExecutor = analysisExecutor,
+                        onCameraStarted = onCameraStarted,
                         onCameraError = onCameraError,
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -151,6 +153,7 @@ private fun CameraScreenPreview() {
             analysisExecutor = Executors.newSingleThreadExecutor(),
             onRequestPermission = {},
             onOpenAppSettings = {},
+            onCameraStarted = {},
             onCameraError = {},
             onDismissError = {},
         )

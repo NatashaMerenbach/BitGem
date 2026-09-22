@@ -12,11 +12,17 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
@@ -39,6 +45,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 fun CameraPreview(
     analyzer: ImageAnalysis.Analyzer,
     analysisExecutor: Executor,
+    onCameraStarted: () -> Unit,
     onCameraError: (Throwable) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -55,7 +62,21 @@ fun CameraPreview(
         }
     }
 
-    DisposableEffect(lifecycleOwner, analyzer, analysisExecutor) {
+    // A failed bind is not the end of the story: the camera may have been busy for a moment, or
+    // the permission may have just been granted in Settings. Without this, one failure left the
+    // error on screen until the app was restarted — every time the camera was opened. So we retry
+    // whenever the app comes back to the foreground, and report a successful bind so a stale
+    // error can be cleared.
+    var failed by remember { mutableStateOf(false) }
+    var attempt by remember { mutableIntStateOf(0) }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        // Only re-attempt after a completed failure: at first composition ON_RESUME fires while
+        // the bind is still in flight, and bumping the key then would bind twice.
+        if (failed) attempt++
+    }
+
+    DisposableEffect(lifecycleOwner, analyzer, analysisExecutor, attempt) {
         val disposed = AtomicBoolean(false)
         val cameraProvider = ProcessCameraProvider.getInstance(context)
         val mainExecutor = ContextCompat.getMainExecutor(context)
@@ -98,11 +119,17 @@ fun CameraPreview(
                         preview,
                         imageAnalysis,
                     )
+                    if (failed) {
+                        Log.i(LOG_TAG, "Camera bound on retry attempt ${attempt + 1}")
+                    }
+                    failed = false
+                    onCameraStarted()
                 } catch (error: Throwable) {
                     // The UI shows a fixed string; the trace goes to logcat, which is the only
                     // place a bug report can get it from (a revoked permission, a camera held by
                     // another app, or a device that cannot satisfy the resolution request).
                     Log.e(LOG_TAG, "Binding the camera to the lifecycle failed", error)
+                    failed = true
                     onCameraError(error)
                 }
             },
