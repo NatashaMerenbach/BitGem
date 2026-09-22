@@ -267,19 +267,6 @@ effective k silently shrinks — which shows up downstream as two identical swat
 }
 ```
 
-### 3.6 k = 6 for a 5-slot panel, and a merge step
-
-Two deliberate mismatches between the algorithm's `k` and the panel's five rows:
-
-- `k > topN` gives headroom: because merging can collapse clusters, `k = 5` would frequently leave
-  the panel showing three or four colors. `k = 6` costs almost nothing (k-means work scales with
-  the number of *bins*, not with k).
-- **Merging** is what turns "6 clusters" into "5 colors a human would name". k-means happily splits
-  one dominant color into two neighbours; the greedy weighted-mean merge (`mergeDistance = 24` RGB
-  units) rejoins them while keeping the weight — and therefore the percentages — exact.
-
-`24` is a judgement call: it is roughly where two swatches stop looking like the same color when
-placed side by side. It is exposed in `AnalysisConfig` for exactly this reason.
 
 ### 3.7 Temporal smoothing, because a per-frame analyser is a jitter machine
 
